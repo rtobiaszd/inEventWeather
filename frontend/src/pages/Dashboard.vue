@@ -1,68 +1,71 @@
 <template>
   <div class="stack">
-    <!-- Search -->
-    <div class="card">
-      <div class="search-bar">
-        <div class="search-input-group">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-          <input
-            v-model="city"
-            type="text"
-            placeholder="Cidade (ex: São Paulo)"
-            @keyup.enter="searchWeather"
-          />
-        </div>
-        <button class="btn btn-primary" :disabled="loading" @click="searchWeather">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Buscar
-        </button>
+    <!-- Overview Cards -->
+    <div class="metric-grid" style="grid-template-columns:repeat(auto-fit, minmax(160px, 1fr))">
+      <div class="metric-card">
+        <div class="metric-card-label">📅 Total de Eventos</div>
+        <div class="metric-card-value">{{ stats.total }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-label">📋 Planejados</div>
+        <div class="metric-card-value" style="color:var(--color-text-secondary)">{{ stats.planned }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-label">✅ Confirmados</div>
+        <div class="metric-card-value" style="color:#16a34a">{{ stats.confirmed }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-label">🏁 Realizados</div>
+        <div class="metric-card-value" style="color:var(--color-text-secondary)">{{ stats.completed }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-label">▶ Em Andamento</div>
+        <div class="metric-card-value" style="color:#2563eb">{{ stats.in_progress }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-label">💰 Receita Total</div>
+        <div class="metric-card-value" style="font-size:18px">{{ formatBRL(stats.revenue) }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-label">🎫 Ticket Médio</div>
+        <div class="metric-card-value" style="font-size:18px">{{ formatBRL(stats.avgTicket) }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-card-label">🌤 Outdoor</div>
+        <div class="metric-card-value">{{ stats.outdoor }}</div>
       </div>
     </div>
 
-    <!-- Loading -->
-    <LoadingState v-if="loading" message="Consultando clima..." />
-
-    <!-- Error -->
-    <ErrorMessage v-else-if="error" :message="error" @retry="searchWeather" />
-
-    <template v-else-if="weather">
-      <!-- Cidade + botão favoritar -->
-      <div class="dash-city-row">
-        <span class="dash-city-label">{{ searchedCity }}</span>
-        <button
-          class="btn btn-sm"
-          :class="favorited ? 'btn-secondary' : 'btn-ghost'"
-          :disabled="favLoading"
-          @click="toggleFavorite"
-        >
-          {{ favorited ? '♥ Favoritada' : '♡ Favoritar' }}
-        </button>
-      </div>
-
-      <!-- Main weather + metrics row -->
-      <div class="grid-2">
-        <WeatherCard :data="weather" :events="dashboardEvents" />
-
-        <div class="stack-sm">
-          <!-- Risk card -->
-          <div class="card">
-            <div class="card-header">
-              <h3>Análise de Risco</h3>
-              <RiskBadge :status="weather.risk.status" />
+    <!-- Main grid: Weather + Risk -->
+    <div class="grid-2">
+      <!-- Search + Weather -->
+      <div class="stack-sm">
+        <div class="card">
+          <div class="search-bar">
+            <div class="search-input-group">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+              <input v-model="city" type="text" placeholder="Cidade (ex: São Paulo)" @keyup.enter="searchWeather" />
             </div>
-            <div>
-              <div class="flex-between mb-16">
-                <span class="text-sm text-muted">Score de risco</span>
-                <span class="font-bold" :style="{ color: riskColor }">{{ weather.risk.score }}/100</span>
-              </div>
-              <div class="risk-bar">
-                <div class="risk-bar-fill" :style="{ width: weather.risk.score + '%', background: riskColor }" />
-              </div>
-              <p class="text-sm text-muted mt-8">{{ weather.risk.recommendation }}</p>
-            </div>
+            <button class="btn btn-primary" :disabled="loading" @click="searchWeather">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Buscar
+            </button>
+          </div>
+        </div>
+
+        <LoadingState v-if="loading" message="Consultando clima..." />
+        <ErrorMessage v-else-if="error" :message="error" @retry="searchWeather" />
+
+        <template v-if="weather">
+          <div class="dash-city-row">
+            <span class="dash-city-label">{{ searchedCity }}</span>
+            <button class="btn btn-sm" :class="favorited ? 'btn-secondary' : 'btn-ghost'" :disabled="favLoading" @click="toggleFavorite">
+              {{ favorited ? '♥ Favoritada' : '♡ Favoritar' }}
+            </button>
           </div>
 
-          <!-- Metric quick cards -->
+          <WeatherCard :data="weather" :events="dashboardEvents" />
+
           <div class="metric-grid" style="grid-template-columns:1fr 1fr;">
             <div class="metric-card">
               <div class="metric-card-label">🌡 Temperatura</div>
@@ -78,41 +81,71 @@
             </div>
             <div class="metric-card">
               <div class="metric-card-label">🌫 Qualidade Ar</div>
-              <div class="metric-card-value" style="font-size:18px;">{{ aqiLabel }}</div>
+              <div class="metric-card-value" style="font-size:18px">{{ aqiLabel }}</div>
             </div>
           </div>
-        </div>
+
+          <div v-if="weather.risk.alerts.length > 0" class="card">
+            <div class="card-header"><h3>Alertas Climáticos</h3></div>
+            <div class="stack-sm">
+              <div v-for="(alert, i) in weather.risk.alerts" :key="i" :class="['alert', `alert-${alert.severity}`]">
+                <span>{{ alertIcon(alert.type) }}</span>
+                <span>{{ alert.message }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
 
-      <!-- Alerts -->
-      <div v-if="weather.risk.alerts.length > 0" class="card">
-        <div class="card-header"><h3>Alertas Climáticos</h3></div>
-        <div class="stack-sm">
-          <div
-            v-for="(alert, i) in weather.risk.alerts"
-            :key="i"
-            :class="['alert', `alert-${alert.severity}`]"
-          >
-            <span>{{ alertIcon(alert.type) }}</span>
-            <span>{{ alert.message }}</span>
+      <!-- Right column: Risk + Forecast -->
+      <div class="stack-sm">
+        <div v-if="weather" class="card">
+          <div class="card-header">
+            <h3>Análise de Risco</h3>
+            <RiskBadge :status="weather.risk.status" />
+          </div>
+          <div>
+            <div class="flex-between mb-16">
+              <span class="text-sm text-muted">Score</span>
+              <span class="font-bold" :style="{ color: riskColor }">{{ weather.risk.score }}/100</span>
+            </div>
+            <div class="risk-bar">
+              <div class="risk-bar-fill" :style="{ width: weather.risk.score + '%', background: riskColor }" />
+            </div>
+            <p class="text-sm text-muted mt-8">{{ weather.risk.recommendation }}</p>
+          </div>
+        </div>
+
+        <div v-if="forecast.length" class="card">
+          <div class="card-header">
+            <h3>Próximas Horas</h3>
+            <RouterLink to="/weather" class="btn btn-ghost btn-sm">Ver tudo</RouterLink>
+          </div>
+          <LoadingState v-if="forecastLoading" message="Carregando..." />
+          <div v-else class="forecast-grid">
+            <ForecastCard v-for="item in forecast.slice(0,8)" :key="item.datetime" :item="item" />
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Mini forecast -->
-      <div class="card">
-        <div class="card-header">
-          <h3>Próximas Horas</h3>
-          <RouterLink to="/weather" class="btn btn-ghost btn-sm">Ver tudo</RouterLink>
-        </div>
-        <LoadingState v-if="forecastLoading" message="Carregando previsão..." />
-        <div v-else-if="forecast.length" class="forecast-grid">
-          <ForecastCard v-for="item in forecast.slice(0,8)" :key="item.datetime" :item="item" />
+    <!-- Event Status Breakdown -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Eventos por Status</h3>
+      </div>
+      <div class="status-chart">
+        <div v-for="s in statusBars" :key="s.key" class="status-row">
+          <span class="status-label">{{ s.label }}</span>
+          <div class="status-bar-track">
+            <div class="status-bar-fill" :style="{ width: s.pct + '%', background: s.color }" />
+          </div>
+          <span class="status-count">{{ s.count }}</span>
         </div>
       </div>
-    </template>
+    </div>
 
-    <!-- Recent events -->
+    <!-- Upcoming Events -->
     <div class="card">
       <div class="card-header">
         <h3>Próximos Eventos</h3>
@@ -125,7 +158,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { weatherApi, eventsApi, favoritesApi } from '../services/api.js'
 import WeatherCard   from '../components/WeatherCard.vue'
 import ForecastCard  from '../components/ForecastCard.vue'
@@ -137,7 +170,7 @@ import ErrorMessage  from '../components/ErrorMessage.vue'
 const city         = ref('São Paulo')
 const searchedCity = ref('São Paulo')
 const weather = ref(null)
-const forecast= ref([])
+const forecast = ref([])
 const loading = ref(false)
 const forecastLoading = ref(false)
 const error   = ref(null)
@@ -146,14 +179,6 @@ const eventsLoading = ref(false)
 
 const favorited  = ref(false)
 const favLoading = ref(false)
-
-// Debounce: busca ao digitar (600ms)
-let debounceTimer = null
-watch(city, (val) => {
-  clearTimeout(debounceTimer)
-  if (!val.trim() || val.trim().length < 2) return
-  debounceTimer = setTimeout(() => searchWeather(), 600)
-})
 
 const aqiLabels = { 1: 'Boa', 2: 'Razoável', 3: 'Moderada', 4: 'Ruim', 5: 'Muito Ruim' }
 const aqiLabel  = computed(() => aqiLabels[weather.value?.aqi] ?? '—')
@@ -166,6 +191,39 @@ const riskColor = computed(() => {
 })
 
 const recentEvents = computed(() => dashboardEvents.value.slice(0, 5))
+
+const stats = computed(() => {
+  const events = dashboardEvents.value
+  const total = events.length
+  const planned = events.filter(e => e.status === 'planned').length
+  const confirmed = events.filter(e => e.status === 'confirmed').length
+  const in_progress = events.filter(e => e.status === 'in_progress').length
+  const completed = events.filter(e => e.status === 'completed').length
+  const cancelled = events.filter(e => e.status === 'cancelled').length
+  const outdoor = events.filter(e => e.type === 'outdoor').length
+  const indoor = events.filter(e => e.type === 'indoor').length
+
+  const revenue = events.reduce((s, e) => s + (Number(e.revenue) || 0), 0)
+  const tickets = events.filter(e => Number(e.ticket_price) > 0)
+  const avgTicket = tickets.length ? tickets.reduce((s, e) => s + Number(e.ticket_price), 0) / tickets.length : 0
+
+  return { total, planned, confirmed, in_progress, completed, cancelled, outdoor, indoor, revenue, avgTicket }
+})
+
+const statusBars = computed(() => {
+  const total = stats.value.total || 1
+  return [
+    { key: 'planned',     label: '📋 Planejados',    count: stats.value.planned,     pct: (stats.value.planned / total) * 100,     color: '#94a3b8' },
+    { key: 'confirmed',   label: '✅ Confirmados',   count: stats.value.confirmed,   pct: (stats.value.confirmed / total) * 100,   color: '#22c55e' },
+    { key: 'in_progress', label: '▶ Em andamento',   count: stats.value.in_progress, pct: (stats.value.in_progress / total) * 100, color: '#3b82f6' },
+    { key: 'completed',   label: '🏁 Realizados',    count: stats.value.completed,   pct: (stats.value.completed / total) * 100,   color: '#64748b' },
+    { key: 'cancelled',   label: '❌ Cancelados',    count: stats.value.cancelled,   pct: (stats.value.cancelled / total) * 100,   color: '#ef4444' },
+  ]
+})
+
+function formatBRL(n) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0)
+}
 
 function alertIcon(type) {
   return { heat: '🌡', cold: '🧊', wind: '💨', rain: '🌧', air: '🌫', humidity: '💧' }[type] ?? '⚠️'
@@ -197,7 +255,7 @@ async function loadForecast() {
     const res = await weatherApi.forecast(city.value, 'BR')
     forecast.value = res.data.forecast
   } catch {
-    // silently ignore
+    // silent
   } finally {
     forecastLoading.value = false
   }
@@ -222,7 +280,7 @@ async function loadEvents() {
     const res = await eventsApi.list()
     dashboardEvents.value = res.data ?? []
   } catch {
-    // silently ignore
+    // silent
   } finally {
     eventsLoading.value = false
   }
@@ -246,5 +304,46 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-secondary);
+}
+
+.status-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-label {
+  width: 140px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.status-bar-track {
+  flex: 1;
+  height: 20px;
+  background: var(--color-surface);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.status-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.status-count {
+  width: 40px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
 }
 </style>

@@ -57,10 +57,16 @@
       </div>
     </div>
 
-    <RouterLink :to="`/weather?city=${encodeURIComponent(city.city)}&country=${city.country}`" class="btn btn-secondary btn-sm">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-      Ver clima
-    </RouterLink>
+    <div class="fav-actions">
+      <RouterLink :to="`/weather?city=${encodeURIComponent(city.city)}&country=${city.country}`" class="btn btn-secondary btn-sm">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+        Ver clima
+      </RouterLink>
+      <RouterLink :to="`/events/map?city=${encodeURIComponent(city.city)}`" class="btn btn-ghost btn-sm">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        Ver mapa
+      </RouterLink>
+    </div>
   </div>
 </template>
 
@@ -171,6 +177,11 @@ function formatEventDate(d) {
   font-size: 11px;
   color: var(--color-text-secondary);
   margin-top: 2px;
+}
+
+.fav-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .badge-xs {

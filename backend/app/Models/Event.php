@@ -11,6 +11,9 @@ class Event extends Model
         'event_date', 'event_time',
         'type', 'expected_audience', 'description',
         'latitude', 'longitude',
+        'status', 'budget', 'revenue', 'ticket_price',
+        'organizer', 'organizer_contact', 'venue',
+        'end_date', 'end_time', 'banner_url', 'tags', 'notes',
     ];
 
     protected function casts(): array
@@ -19,6 +22,11 @@ class Event extends Model
             'expected_audience' => 'integer',
             'latitude' => 'float',
             'longitude' => 'float',
+            'budget' => 'float',
+            'revenue' => 'float',
+            'ticket_price' => 'float',
+            'event_date' => 'date:Y-m-d',
+            'end_date' => 'date:Y-m-d',
         ];
     }
 }

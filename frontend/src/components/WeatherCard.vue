@@ -8,7 +8,9 @@
         <h3>{{ data.city }}, {{ data.country }}</h3>
         <div class="weather-card-badges">
           <span class="badge badge-info weather-live-badge">Agora</span>
-          <span class="badge weather-events-badge">{{ mappedEvents.length }} eventos no mapa</span>
+          <RouterLink v-if="mappedEvents.length > 0" to="/events/map" class="badge weather-events-badge weather-events-link" @click.stop>
+            {{ mappedEvents.length }} evento{{ mappedEvents.length !== 1 ? 's' : '' }} no mapa →
+          </RouterLink>
         </div>
       </div>
 
@@ -229,6 +231,16 @@ onBeforeUnmount(() => {
   background: rgba(15, 23, 42, 0.28);
   color: rgba(255,255,255,.92);
   border: 1px solid rgba(255,255,255,.14);
+}
+
+.weather-events-link {
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms;
+}
+
+.weather-events-link:hover {
+  background: rgba(37, 99, 235, 0.5);
+  border-color: rgba(37, 99, 235, 0.7);
 }
 
 .wc-body { display: flex; gap: 24px; flex-wrap: wrap; }

@@ -46,7 +46,7 @@
           </div>
         </div>
 
-        <div class="form-row">
+        <div class="form-row-3">
           <div class="form-group">
             <label class="form-label">Data <span class="required">*</span></label>
             <input v-model="form.event_date" type="date" class="form-control" required />
@@ -55,18 +55,15 @@
             <label class="form-label">Horário <span class="required">*</span></label>
             <input v-model="form.event_time" type="time" class="form-control" required />
           </div>
-        </div>
-
-        <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Latitude</label>
-            <input v-model.number="form.latitude" type="number" class="form-control" step="0.000001" min="-90" max="90" placeholder="-23.550520" />
-            <span class="form-hint">Use coordenadas exatas para mostrar o evento no mapa do dashboard.</span>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Longitude</label>
-            <input v-model.number="form.longitude" type="number" class="form-control" step="0.000001" min="-180" max="180" placeholder="-46.633308" />
-            <span class="form-hint">Sem coordenadas, a API recalcula a posição pela cidade.</span>
+            <label class="form-label">Status</label>
+            <select v-model="form.status" class="form-control">
+              <option value="planned">Planejado</option>
+              <option value="confirmed">Confirmado</option>
+              <option value="in_progress">Em andamento</option>
+              <option value="completed">Realizado</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
           </div>
         </div>
 
@@ -74,6 +71,103 @@
           <label class="form-label">Descrição</label>
           <textarea v-model="form.description" class="form-control" />
         </div>
+
+        <details class="form-details">
+          <summary class="form-details-summary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            Mais detalhes
+          </summary>
+          <div class="form-details-body">
+            <div class="form-row-3">
+              <div class="form-group">
+                <label class="form-label">Data Término</label>
+                <input v-model="form.end_date" type="date" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Horário Término</label>
+                <input v-model="form.end_time" type="time" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Banner URL</label>
+                <input v-model="form.banner_url" type="url" class="form-control" placeholder="https://..." />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Local (Venue)</label>
+                <input v-model="form.venue" type="text" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Organizador</label>
+                <input v-model="form.organizer" type="text" class="form-control" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Contato</label>
+                <input v-model="form.organizer_contact" type="text" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tags</label>
+                <input v-model="form.tags" type="text" class="form-control" placeholder="música, ao ar livre, família" />
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="form-details">
+          <summary class="form-details-summary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            Financeiro
+          </summary>
+          <div class="form-details-body">
+            <div class="form-row-3">
+              <div class="form-group">
+                <label class="form-label">Orçamento (R$)</label>
+                <input v-model.number="form.budget" type="number" class="form-control" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Receita (R$)</label>
+                <input v-model.number="form.revenue" type="number" class="form-control" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ingresso (R$)</label>
+                <input v-model.number="form.ticket_price" type="number" class="form-control" min="0" step="0.01" />
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="form-details">
+          <summary class="form-details-summary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            Coordenadas (mapa)
+          </summary>
+          <div class="form-details-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Latitude</label>
+                <input v-model.number="form.latitude" type="number" class="form-control" step="0.000001" min="-90" max="90" placeholder="-23.550520" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Longitude</label>
+                <input v-model.number="form.longitude" type="number" class="form-control" step="0.000001" min="-180" max="180" placeholder="-46.633308" />
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="form-details">
+          <summary class="form-details-summary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            Anotações internas
+          </summary>
+          <div class="form-details-body">
+            <div class="form-group">
+              <textarea v-model="form.notes" class="form-control" placeholder="Observações..." rows="3" />
+            </div>
+          </div>
+        </details>
 
         <div v-if="errorMsg" class="alert alert-danger">{{ errorMsg }}</div>
 
@@ -105,6 +199,11 @@ const form = ref({
   event_date: '', event_time: '',
   type: 'outdoor', expected_audience: 0, description: '',
   latitude: null, longitude: null,
+  status: 'planned',
+  budget: null, revenue: null, ticket_price: null,
+  organizer: '', organizer_contact: '', venue: '',
+  end_date: '', end_time: '', banner_url: '',
+  tags: '', notes: '',
 })
 
 const loading    = ref(true)
@@ -113,7 +212,6 @@ const submitting = ref(false)
 const errorMsg   = ref(null)
 
 onMounted(async () => {
-  // Carrega tipos e evento em paralelo
   try {
     const typesRes = await eventTypesApi.list()
     eventTypes.value = typesRes.data ?? []
@@ -138,6 +236,17 @@ onMounted(async () => {
       description:       ev.description ?? '',
       latitude:          ev.latitude,
       longitude:         ev.longitude,
+      status:            ev.status ?? 'planned',
+      budget:            ev.budget, revenue: ev.revenue,
+      ticket_price:      ev.ticket_price,
+      organizer:         ev.organizer ?? '',
+      organizer_contact: ev.organizer_contact ?? '',
+      venue:             ev.venue ?? '',
+      end_date:          ev.end_date ?? '',
+      end_time:          ev.end_time?.slice(0, 5),
+      banner_url:        ev.banner_url ?? '',
+      tags:              ev.tags ?? '',
+      notes:             ev.notes ?? '',
     }
   } catch (e) {
     loadError.value = e.message
@@ -159,3 +268,39 @@ async function submit() {
   }
 }
 </script>
+
+<style scoped>
+.form-details {
+  margin-top: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.form-details-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-surface);
+  user-select: none;
+}
+
+.form-details-summary svg {
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+details[open] .form-details-summary svg {
+  transform: rotate(90deg);
+}
+
+.form-details-body {
+  padding: 12px 14px 4px;
+  border-top: 1px solid var(--color-border);
+  background: #fff;
+}
+</style>

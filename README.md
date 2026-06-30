@@ -81,7 +81,7 @@ inEvent/
 │       └── docs/index.html     # Swagger UI
 ├── frontend/              # Vue 3 + Vite
 │   └── src/
-│       ├── pages/         # Login, Dashboard, Events, Weather, History
+│       ├── pages/         # Login, Dashboard, Events, EventsMap, Weather, History
 │       ├── components/    # Sidebar, EventCard, WeatherCard...
 │       ├── composables/   # useAuth.js (singleton)
 │       └── services/api.js
@@ -117,13 +117,22 @@ Documentação completa: **`http://localhost:8080/docs`**
 | POST   | `/api/favorites`       | ✓    | Adiciona cidade (country opcional, padrão BR) |
 | DELETE | `/api/favorites/{id}`  | ✓    | Remove cidade dos favoritos              |
 
-## Novas features geoespaciais
+## Mapa interativo de eventos (`/events/map`)
 
-- O card principal do dashboard renderiza um mapa **Leaflet** como fundo visual.
-- Eventos aceitam `latitude` e `longitude` opcionais no cadastro e na edição.
-- Quando as coordenadas não são enviadas, o backend tenta geocodificar automaticamente com `city` + `country`.
-- Eventos antigos sem coordenadas são enriquecidos automaticamente ao listar ou consultar detalhes.
-- `GET /api/weather/search` agora retorna `coordinates`, usadas para centralizar o mapa no frontend.
+Página dedicada com mapa **Leaflet** full-page que exibe todos os eventos cadastrados:
+
+- **Marcadores** — cada evento com coordenadas aparece como um ponto no mapa
+- **Tooltip** — ao passar o mouse, mostra nome, data, horário e cidade do evento
+- **Clique** — abre um card com detalhes e link para editar
+- **Duplo clique** — cria um novo evento rapidamente na posição clicada (modal com nome, data, cidade)
+- **Busca de endereço** — campo de busca que consulta a Nominatim (OpenStreetMap) e centraliza o mapa no local
+- **Filtro por cidade** — ao clicar "Ver mapa" nos favoritos, o mapa filtra apenas eventos daquela cidade
+
+### Acesso
+
+- **Dashboard** — o badge "N eventos no mapa" no card de clima é um link para o mapa
+- **Favoritos** — cada card de cidade tem o botão "Ver mapa" que abre o mapa filtrado pela cidade
+- **Sidebar** — link "Mapa" no menu de navegação
 
 ### Exemplo de payload de evento com coordenadas
 

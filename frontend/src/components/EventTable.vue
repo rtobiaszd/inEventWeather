@@ -6,16 +6,15 @@
           <th>Nome</th>
           <th>Cidade</th>
           <th>Data</th>
-          <th>Horário</th>
           <th>Tipo</th>
-          <th>Público</th>
-          <th>Clima no Evento</th>
+          <th>Status</th>
+          <th>Clima</th>
           <th v-if="showActions">Ações</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="events.length === 0">
-          <td :colspan="showActions ? 8 : 7">
+          <td :colspan="showActions ? 7 : 6">
             <div class="empty-state" style="padding:32px">
               <span class="empty-icon">📅</span>
               <h3>Nenhum evento cadastrado</h3>
@@ -23,79 +22,70 @@
             </div>
           </td>
         </tr>
-        <tr v-for="event in events" :key="event.id">
-          <td>
-            <span class="font-medium">{{ event.name }}</span>
-          </td>
-          <td class="td-muted">{{ event.city }}, {{ event.country }}</td>
-          <td class="td-muted">{{ formatDate(event.event_date) }}</td>
-          <td class="td-muted">{{ formatTime(event.event_time) }}</td>
-          <td>
-            <span :class="['badge', event.type === 'outdoor' ? 'badge-info' : 'badge-neutral']">
-              {{ event.type === 'outdoor' ? '🌤 Outdoor' : '🏛 Indoor' }}
-            </span>
-          </td>
-          <td class="td-muted">{{ formatAudience(event.expected_audience) }}</td>
-          <td class="td-forecast">
-            <div v-if="forecasts[event.id]" class="forecast-chip">
-              <img
-                v-if="forecasts[event.id].icon"
-                :src="`https://openweathermap.org/img/wn/${forecasts[event.id].icon}.png`"
-                width="28" height="28"
-                :alt="forecasts[event.id].condition"
-                class="forecast-icon"
-              />
-              <div class="forecast-nums">
-                <span class="forecast-temp">{{ Math.round(forecasts[event.id].temperature) }}°C</span>
-                <span class="forecast-rain">💧 {{ forecasts[event.id].rain_probability }}%</span>
-                <span class="forecast-ts" :title="forecasts[event.id].fetchedAt">
-                  {{ timeAgo(forecasts[event.id].fetchedAt) }}
-                </span>
+        <template v-for="event in events" :key="event.id">
+          <tr>
+            <td>
+              <span class="font-medium">{{ event.name }}</span>
+            </td>
+            <td class="td-muted">{{ event.city }}, {{ event.country }}</td>
+            <td class="td-muted">{{ formatDate(event.event_date) }}</td>
+            <td>
+              <span :class="['badge', event.type === 'outdoor' ? 'badge-info' : 'badge-neutral']">
+                {{ event.type === 'outdoor' ? '🌤 Outdoor' : '🏛 Indoor' }}
+              </span>
+            </td>
+            <td>
+              <span :class="statusClass(event.status)">{{ statusLabel(event.status) }}</span>
+            </td>
+            <td class="td-forecast">
+              <div v-if="forecasts[event.id]" class="forecast-chip">
+                <img
+                  v-if="forecasts[event.id].icon"
+                  :src="`https://openweathermap.org/img/wn/${forecasts[event.id].icon}.png`"
+                  width="28" height="28"
+                  :alt="forecasts[event.id].condition"
+                  class="forecast-icon"
+                />
+                <div class="forecast-nums">
+                  <span class="forecast-temp">{{ Math.round(forecasts[event.id].temperature) }}°C</span>
+                  <span class="forecast-rain">💧 {{ forecasts[event.id].rain_probability }}%</span>
+                </div>
+                <button
+                  class="btn-refresh"
+                  :disabled="loadingFc[event.id]"
+                  :class="{ spinning: loadingFc[event.id] }"
+                  @click="loadForecast(event)"
+                  title="Atualizar"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                </button>
               </div>
-              <span
-                :class="['badge', 'badge-xs', forecasts[event.id].type === 'forecast' ? 'badge-info' : 'badge-neutral']"
-                :title="forecasts[event.id].note"
-              >
-                {{ forecasts[event.id].type === 'forecast' ? 'Real' : 'Média' }}
+              <span v-else-if="loadingFc[event.id]" class="td-muted forecast-loading">
+                <span class="spinner-xs"></span>
               </span>
               <button
-                class="btn-refresh"
-                :disabled="loadingFc[event.id]"
-                :class="{ spinning: loadingFc[event.id] }"
+                v-else
+                class="btn btn-ghost btn-sm forecast-btn"
                 @click="loadForecast(event)"
-                title="Atualizar previsão"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <polyline points="23 4 23 10 17 10"/>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                </svg>
+                🌤 Ver
               </button>
-            </div>
-            <span v-else-if="loadingFc[event.id]" class="td-muted forecast-loading">
-              <span class="spinner-xs"></span> buscando...
-            </span>
-            <button
-              v-else
-              class="btn btn-ghost btn-sm forecast-btn"
-              @click="loadForecast(event)"
-              title="Ver previsão do clima para o dia do evento"
-            >
-              🌤 Ver clima
-            </button>
-          </td>
-          <td v-if="showActions">
-            <div class="flex-gap">
-              <button class="btn btn-ghost btn-sm" @click="$emit('edit', event)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Editar
-              </button>
-              <button class="btn btn-danger btn-sm" @click="$emit('delete', event)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                Excluir
-              </button>
-            </div>
-          </td>
-        </tr>
+            </td>
+            <td v-if="showActions">
+              <div class="flex-gap">
+                <button class="btn btn-ghost btn-sm" @click="$emit('edit', event)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn btn-danger btn-sm" @click="$emit('delete', event)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </template>
       </tbody>
     </table>
   </div>
@@ -122,11 +112,10 @@ function restoreFromCache(ids) {
     try {
       const raw = localStorage.getItem(CACHE_KEY(id))
       if (raw) forecasts[id] = JSON.parse(raw)
-    } catch { /* ignore corrupted entries */ }
+    } catch { /* ignore */ }
   }
 }
 
-// restore cache whenever the events list is populated (async load from parent)
 watch(() => props.events, (list) => {
   restoreFromCache(list.map(e => e.id))
 }, { immediate: true })
@@ -141,19 +130,10 @@ async function loadForecast(event) {
       localStorage.setItem(CACHE_KEY(event.id), JSON.stringify(data))
     }
   } catch {
-    // silently fail — button stays for retry
+    // silent
   } finally {
     loadingFc[event.id] = false
   }
-}
-
-function timeAgo(iso) {
-  if (!iso) return ''
-  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
-  if (diff < 60)  return 'agora'
-  if (diff < 3600) return `há ${Math.floor(diff / 60)}min`
-  if (diff < 86400) return `há ${Math.floor(diff / 3600)}h`
-  return `há ${Math.floor(diff / 86400)}d`
 }
 
 function formatDate(d) {
@@ -162,14 +142,26 @@ function formatDate(d) {
   return `${day}/${m}/${y}`
 }
 
-function formatTime(t) {
-  if (!t) return '—'
-  return t.slice(0, 5)
+function statusLabel(status) {
+  const labels = {
+    planned: '📋 Planejado',
+    confirmed: '✅ Confirmado',
+    in_progress: '▶ Andamento',
+    completed: '🏁 Realizado',
+    cancelled: '❌ Cancelado',
+  }
+  return labels[status] || status || '—'
 }
 
-function formatAudience(n) {
-  if (!n) return '—'
-  return new Intl.NumberFormat('pt-BR').format(n)
+function statusClass(status) {
+  const cls = {
+    planned: 'badge badge-neutral',
+    confirmed: 'badge badge-success',
+    in_progress: 'badge badge-info',
+    completed: 'badge badge-neutral',
+    cancelled: 'badge badge-danger',
+  }
+  return cls[status] || 'badge badge-neutral'
 }
 </script>
 
@@ -186,7 +178,8 @@ function formatAudience(n) {
 
 .forecast-nums {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   line-height: 1.2;
 }
 
@@ -199,12 +192,6 @@ function formatAudience(n) {
 .forecast-rain {
   font-size: 11px;
   color: var(--color-text-secondary);
-}
-
-.badge-xs {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 4px;
 }
 
 .forecast-loading {
@@ -227,12 +214,6 @@ function formatAudience(n) {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .forecast-btn { font-size: 12px; }
-
-.forecast-ts {
-  font-size: 10px;
-  color: var(--color-text-secondary);
-  opacity: 0.7;
-}
 
 .btn-refresh {
   display: inline-flex;

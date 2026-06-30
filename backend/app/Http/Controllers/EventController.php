@@ -38,6 +38,18 @@ class EventController extends Controller
             'description'       => 'nullable|string',
             'latitude'          => 'nullable|numeric|between:-90,90|required_with:longitude',
             'longitude'         => 'nullable|numeric|between:-180,180|required_with:latitude',
+            'status'            => 'nullable|string|in:planned,confirmed,in_progress,completed,cancelled',
+            'budget'            => 'nullable|numeric|min:0',
+            'revenue'           => 'nullable|numeric|min:0',
+            'ticket_price'      => 'nullable|numeric|min:0',
+            'organizer'         => 'nullable|string|max:255',
+            'organizer_contact' => 'nullable|string|max:255',
+            'venue'             => 'nullable|string|max:255',
+            'end_date'          => 'nullable|date_format:Y-m-d',
+            'end_time'          => 'nullable',
+            'banner_url'        => 'nullable|string|max:500',
+            'tags'              => 'nullable|string|max:500',
+            'notes'             => 'nullable|string',
         ]);
 
         $data = $this->resolveCoordinates($data);
@@ -123,6 +135,18 @@ class EventController extends Controller
             'description'       => 'nullable|string',
             'latitude'          => 'nullable|numeric|between:-90,90|required_with:longitude',
             'longitude'         => 'nullable|numeric|between:-180,180|required_with:latitude',
+            'status'            => 'nullable|string|in:planned,confirmed,in_progress,completed,cancelled',
+            'budget'            => 'nullable|numeric|min:0',
+            'revenue'           => 'nullable|numeric|min:0',
+            'ticket_price'      => 'nullable|numeric|min:0',
+            'organizer'         => 'nullable|string|max:255',
+            'organizer_contact' => 'nullable|string|max:255',
+            'venue'             => 'nullable|string|max:255',
+            'end_date'          => 'nullable|date_format:Y-m-d',
+            'end_time'          => 'nullable',
+            'banner_url'        => 'nullable|string|max:500',
+            'tags'              => 'nullable|string|max:500',
+            'notes'             => 'nullable|string',
         ]);
 
         $data = $this->resolveCoordinates($data, $event);

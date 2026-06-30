@@ -24,7 +24,13 @@
         </div>
       </div>
       <div class="events-map-stats">
-        <strong>{{ events.length }}</strong> evento{{ events.length !== 1 ? 's' : '' }}
+        <template v-if="filterCity">
+          <strong>{{ filteredEvents.length }}</strong> evento{{ filteredEvents.length !== 1 ? 's' : '' }} em <em>{{ filterCity }}</em>
+          <button class="btn btn-ghost btn-xs" @click="clearCityFilter">Limpar filtro</button>
+        </template>
+        <template v-else>
+          <strong>{{ filteredEvents.length }}</strong> evento{{ filteredEvents.length !== 1 ? 's' : '' }}
+        </template>
       </div>
     </div>
     <div ref="mapContainer" class="events-map-container"></div>
@@ -35,6 +41,10 @@
       <div class="events-map-popup-info">
         <span>{{ formatDate(selectedEvent.event_date) }} às {{ selectedEvent.event_time }}</span>
         <span>{{ selectedEvent.city }}, {{ selectedEvent.country }}</span>
+        <span v-if="selectedEvent.venue">📍 {{ selectedEvent.venue }}</span>
+        <span v-if="selectedEvent.organizer">👤 {{ selectedEvent.organizer }}</span>
+        <span v-if="selectedEvent.expected_audience">👥 {{ formatNum(selectedEvent.expected_audience) }} pessoas</span>
+        <span v-if="selectedEvent.budget">💰 Orçamento: {{ formatBRL(selectedEvent.budget) }}</span>
       </div>
       <div class="events-map-popup-actions">
         <RouterLink :to="`/events/${selectedEvent.id}/edit`" class="btn btn-sm btn-ghost">Editar</RouterLink>
@@ -71,16 +81,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import L from 'leaflet'
 import { eventsApi, favoritesApi } from '../services/api.js'
+
+const route = useRoute()
+const router = useRouter()
 
 const mapContainer = ref(null)
 const searchInput = ref(null)
 const events = ref([])
 const selectedEvent = ref(null)
 
-const searchQuery = ref('')
+const searchQuery = ref(route.query.city || '')
+const filterCity = ref(route.query.city || '')
 const searchResults = ref([])
 let searchTimer = null
 
@@ -90,6 +105,19 @@ const quickLng = ref(0)
 const quickForm = ref({ name: '', city: '', country: 'BR', event_date: '', event_time: '' })
 const quickSubmitting = ref(false)
 const quickError = ref(null)
+
+const filteredEvents = computed(() => {
+  if (!filterCity.value) return events.value
+  const q = filterCity.value.toLowerCase()
+  return events.value.filter(e => e.city?.toLowerCase().includes(q))
+})
+
+function clearCityFilter() {
+  filterCity.value = ''
+  searchQuery.value = ''
+  router.replace({ query: {} })
+  renderMarkers()
+}
 
 let map = null
 let markersLayer = null
@@ -110,7 +138,7 @@ function renderMarkers() {
   markersLayer.clearLayers()
 
   const bounds = []
-  for (const event of events.value) {
+  for (const event of filteredEvents.value) {
     const lat = Number(event.latitude)
     const lng = Number(event.longitude)
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue
@@ -120,11 +148,15 @@ function renderMarkers() {
 
     const dateStr = event.event_date ? formatDate(event.event_date) : ''
     const timeStr = event.event_time || ''
+    const typeLabel = event.type === 'outdoor' ? '🌤' : '🏛'
+    const statusIcons = { planned: '📋', confirmed: '✅', in_progress: '▶️', completed: '🏁', cancelled: '❌' }
+    const statusIcon = statusIcons[event.status] || ''
     marker.bindTooltip(`
       <div class="evmap-tooltip">
         <strong>${event.name}</strong>
         <span>${dateStr}${timeStr ? ' — ' + timeStr : ''}</span>
-        <span class="evmap-tooltip-city">${event.city}</span>
+        <span class="evmap-tooltip-city">${event.city} ${typeLabel} ${statusIcon}</span>
+        ${event.venue ? `<span class="evmap-tooltip-city">📍 ${event.venue}</span>` : ''}
       </div>
     `, { direction: 'top', offset: [0, -10] })
 
@@ -146,6 +178,14 @@ function renderMarkers() {
 function formatDate(date) {
   if (!date) return ''
   return new Date(date + 'T00:00:00').toLocaleDateString('pt-BR')
+}
+
+function formatNum(n) {
+  return new Intl.NumberFormat('pt-BR').format(n)
+}
+
+function formatBRL(n) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n)
 }
 
 async function loadEvents() {
@@ -331,8 +371,8 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   margin-top: 4px;
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   z-index: 1000;
@@ -348,9 +388,9 @@ onBeforeUnmount(() => {
   border: none;
   padding: 10px 12px;
   font-size: 12px;
-  color: var(--color-text);
+  color: #1e293b;
   cursor: pointer;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .events-map-search-item:last-child {
@@ -358,7 +398,7 @@ onBeforeUnmount(() => {
 }
 
 .events-map-search-item:hover {
-  background: var(--color-surface);
+  background: #f1f5f9;
 }
 
 .events-map-search-item-name {
@@ -387,8 +427,8 @@ onBeforeUnmount(() => {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-md);
   padding: 16px 20px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);
@@ -404,7 +444,7 @@ onBeforeUnmount(() => {
   background: none;
   border: none;
   font-size: 20px;
-  color: var(--color-text-secondary);
+  color: #94a3b8;
   cursor: pointer;
   line-height: 1;
 }
@@ -412,7 +452,7 @@ onBeforeUnmount(() => {
 .events-map-popup-card h4 {
   margin: 0 0 8px;
   font-size: 15px;
-  color: var(--color-text);
+  color: #1e293b;
 }
 
 .events-map-popup-info {
@@ -420,8 +460,12 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 2px;
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #64748b;
   margin-bottom: 10px;
+}
+
+.events-map-popup-actions a {
+  color: #3b82f6;
 }
 
 .events-map-popup-actions {
@@ -440,7 +484,7 @@ onBeforeUnmount(() => {
 }
 
 .events-map-quick-card {
-  background: var(--color-card);
+  background: #fff;
   border-radius: var(--radius-md);
   padding: 24px;
   width: 360px;
@@ -451,11 +495,12 @@ onBeforeUnmount(() => {
 .events-map-quick-card h4 {
   margin: 0 0 4px;
   font-size: 16px;
+  color: #1e293b;
 }
 
 .events-map-quick-coords {
   font-size: 11px;
-  color: var(--color-text-secondary);
+  color: #64748b;
   margin: 0 0 16px;
   font-family: monospace;
 }

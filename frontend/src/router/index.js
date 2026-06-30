@@ -48,6 +48,12 @@ const routes = [
     meta: { title: 'Mapa de Eventos', module: 'events' },
   },
   {
+    path: '/events/agenda',
+    name: 'events.agenda',
+    component: () => import('../pages/Agenda.vue'),
+    meta: { title: 'Agenda', module: 'events' },
+  },
+  {
     path: '/favorites',
     name: 'favorites',
     component: () => import('../pages/Favorites.vue'),
