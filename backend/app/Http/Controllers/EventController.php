@@ -17,10 +17,7 @@ class EventController extends Controller
 
     public function index(): JsonResponse
     {
-        $events = Event::orderBy('event_date')->get()
-            ->map(function (Event $event) {
-                return $this->ensureEventCoordinates($event);
-            });
+        $events = Event::orderBy('event_date')->get();
 
         return $this->success($events);
     }

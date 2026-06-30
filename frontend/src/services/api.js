@@ -40,7 +40,7 @@ http.interceptors.response.use(
 )
 
 export const weatherApi = {
-  search:     (city, country = 'BR') => http.get('/weather/search',      { params: { city, country } }),
+  search:     (city, country = 'BR', opts = {}) => http.get('/weather/search',      { params: { city, country }, signal: opts.signal }),
   forecast:   (city, country = 'BR') => http.get('/weather/forecast',    { params: { city, country } }),
   airQuality: (city, country = 'BR') => http.get('/weather/air-quality', { params: { city, country } }),
 }

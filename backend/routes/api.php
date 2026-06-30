@@ -14,12 +14,12 @@ Route::get('/health', fn () => response()->json([
     'data'    => ['status' => 'ok', 'timestamp' => now()->toIso8601String(), 'version' => '3.0.0'],
 ]));
 
-// Públicas
-Route::post('/auth/login',    [AuthController::class, 'login']);
-Route::post('/auth/register', [AuthController::class, 'register']);
+// Públicas (com rate limit)
+Route::post('/auth/login',    [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,60');
 
-// Autenticadas
-Route::middleware('auth:sanctum')->group(function () {
+// Autenticadas (com rate limit global)
+Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me',      [AuthController::class, 'me']);
 

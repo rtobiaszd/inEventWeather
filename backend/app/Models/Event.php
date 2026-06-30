@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Event extends Model
 {
@@ -28,5 +30,36 @@ class Event extends Model
             'event_date' => 'date:Y-m-d',
             'end_date' => 'date:Y-m-d',
         ];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function scopeUpcoming(Builder $query): Builder
+    {
+        return $query->where('event_date', '>=', now()->toDateString())
+            ->orderBy('event_date');
+    }
+
+    public function scopePast(Builder $query): Builder
+    {
+        return $query->where('event_date', '<', now()->toDateString());
+    }
+
+    public function scopeByStatus(Builder $query, string $status): Builder
+    {
+        return $query->where('status', $status);
+    }
+
+    public function scopeByCity(Builder $query, string $city): Builder
+    {
+        return $query->where('city', $city);
+    }
+
+    public function scopeWithoutCoordinates(Builder $query): Builder
+    {
+        return $query->whereNull('latitude')->orWhereNull('longitude');
     }
 }

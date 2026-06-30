@@ -3,17 +3,19 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 class WeatherService
 {
     private string $apiKey;
     private string $baseUrl = 'https://api.openweathermap.org';
 
-    // TTLs em segundos
-    private const TTL_GEO      = 86400; // coordenadas mudam nunca → 24h
-    private const TTL_CURRENT  = 600;   // clima atual → 10 min
-    private const TTL_FORECAST = 1800;  // previsão 5d → 30 min
-    private const TTL_AIR      = 1800;  // qualidade do ar → 30 min
+    private const TTL_GEO      = 86400;
+    private const TTL_CURRENT  = 600;
+    private const TTL_FORECAST = 1800;
+    private const TTL_AIR      = 1800;
+
+    private int $timeout = 8;
 
     public function __construct()
     {
@@ -26,27 +28,31 @@ class WeatherService
 
     private function request(string $url): array
     {
-        $context  = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 10, 'ignore_errors' => true, 'header' => "User-Agent: EventWeatherDashboard/2.0\r\n"]]);
-        $response = @file_get_contents($url, false, $context);
+        try {
+            $response = Http::timeout($this->timeout)
+                ->withUserAgent('EventWeatherDashboard/3.0')
+                ->get($url);
 
-        if ($response === false) {
-            throw new \RuntimeException('Não foi possível conectar à API do OpenWeather.');
-        }
-
-        $data = json_decode($response, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \RuntimeException('Resposta inválida da API do OpenWeather.');
-        }
-
-        if (is_array($data) && isset($data['cod'])) {
-            $cod = (string) $data['cod'];
-            if ($cod !== '200' && $cod !== '0') {
-                throw new \RuntimeException($data['message'] ?? "Erro {$cod} na API do OpenWeather");
+            if ($response->failed()) {
+                $status = $response->status();
+                $body = $response->json();
+                $message = $body['message'] ?? "Erro HTTP {$status} na API do OpenWeather";
+                throw new \RuntimeException($message);
             }
-        }
 
-        return $data;
+            $data = $response->json();
+
+            if (isset($data['cod'])) {
+                $cod = (string) $data['cod'];
+                if ($cod !== '200' && $cod !== '0') {
+                    throw new \RuntimeException($data['message'] ?? "Erro {$cod} na API do OpenWeather");
+                }
+            }
+
+            return $data;
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            throw new \RuntimeException('Não foi possível conectar à API do OpenWeather. Verifique a rede.');
+        }
     }
 
     private function buildUrl(string $endpoint, array $params): string

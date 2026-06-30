@@ -27,8 +27,22 @@ return Application::configure(basePath: dirname(__DIR__))
                 if ($e instanceof \Illuminate\Auth\AuthenticationException) {
                     return response()->json(['success' => false, 'message' => 'Não autenticado'], 401);
                 }
+
+                if ($e instanceof \Illuminate\Http\Exceptions\ThrottleRequestsException) {
+                    return response()->json(['success' => false, 'message' => 'Muitas requisições. Aguarde um momento.'], 429);
+                }
+
+                if ($e instanceof \RuntimeException || $e instanceof \Illuminate\Validation\ValidationException) {
+                    $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : ($e instanceof \Illuminate\Validation\ValidationException ? 422 : 400);
+                    return response()->json(['success' => false, 'message' => $e->getMessage()], $status);
+                }
+
+                $message = app()->isProduction()
+                    ? 'Erro interno do servidor'
+                    : $e->getMessage();
+
                 $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
-                return response()->json(['success' => false, 'message' => $e->getMessage()], $status);
+                return response()->json(['success' => false, 'message' => $message], $status);
             }
         });
     })->create();
