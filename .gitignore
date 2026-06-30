@@ -32,3 +32,4 @@ backend/bootstrap/cache/*.php
 # Cache
 frontend/.nuxt/
 .cache/
+backend/.phpunit.cache/
