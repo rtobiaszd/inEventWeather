@@ -2,10 +2,11 @@
 
 Sistema para gerenciamento de eventos com análise climática em tempo real. Ao cadastrar um evento com cidade e data, o sistema consulta automaticamente o clima atual, gera uma **previsão para o dia do evento** e calcula um **índice de risco climático** (temperatura, vento, chuva, qualidade do ar). O dashboard também usa um **mapa Leaflet** como fundo do card principal de clima, posicionando os eventos pelas coordenadas geográficas.
 
-(Demo)
-https://inevent-front.onrender.com/
--usuário: admin
--senha:   admin123
+## (Demo)
+# https://inevent-front.onrender.com/
+
+# usuário: admin
+# senha:   admin123
 ## Stack
 
 | Camada    | Tecnologia                          |
