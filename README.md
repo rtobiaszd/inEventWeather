@@ -239,3 +239,4 @@ Resultado: latência cai de ~4600ms (cold) para ~10ms (warm).
 | `event-weather-php`     | —     | Laravel + php-fpm     |
 | `event-weather-nginx`   | 8080  | Proxy reverso         |
 | `event-weather-frontend`| 5173  | Vue 3 + Vite (HMR)   |
+ 
