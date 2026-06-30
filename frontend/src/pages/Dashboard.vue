@@ -133,14 +133,36 @@
     <div class="card">
       <div class="card-header">
         <h3>Eventos por Status</h3>
+        <span class="text-sm text-muted">{{ stats.total }} no total</span>
       </div>
-      <div class="status-chart">
-        <div v-for="s in statusBars" :key="s.key" class="status-row">
-          <span class="status-label">{{ s.label }}</span>
-          <div class="status-bar-track">
-            <div class="status-bar-fill" :style="{ width: s.pct + '%', background: s.color }" />
+      <div class="status-grid">
+        <div class="status-ring-wrap">
+          <svg viewBox="0 0 120 120" class="status-ring">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="14" />
+            <circle
+              v-for="(s, i) in ringSegments"
+              :key="s.key"
+              cx="60" cy="60" r="50"
+              fill="none"
+              :stroke="s.color"
+              stroke-width="14"
+              stroke-dasharray="314.16"
+              :stroke-dashoffset="s.offset"
+              :transform="`rotate(${s.rotate} 60 60)`"
+              stroke-linecap="round"
+              style="transition: stroke-dashoffset 0.6s ease"
+            />
+            <text x="60" y="52" text-anchor="middle" class="ring-total" font-size="26" font-weight="700" fill="#1e293b">{{ stats.total }}</text>
+            <text x="60" y="68" text-anchor="middle" font-size="9" fill="#64748b">eventos</text>
+          </svg>
+        </div>
+        <div class="status-legend">
+          <div v-for="s in statusBars" :key="s.key" class="legend-row">
+            <span class="legend-dot" :style="{ background: s.color }"></span>
+            <span class="legend-label">{{ s.label }}</span>
+            <span class="legend-count">{{ s.count }}</span>
+            <span class="legend-pct">{{ s.pct.toFixed(0) }}%</span>
           </div>
-          <span class="status-count">{{ s.count }}</span>
         </div>
       </div>
     </div>
@@ -219,6 +241,22 @@ const statusBars = computed(() => {
     { key: 'completed',   label: '🏁 Realizados',    count: stats.value.completed,   pct: (stats.value.completed / total) * 100,   color: '#64748b' },
     { key: 'cancelled',   label: '❌ Cancelados',    count: stats.value.cancelled,   pct: (stats.value.cancelled / total) * 100,   color: '#ef4444' },
   ]
+})
+
+const ringSegments = computed(() => {
+  const circumference = 314.16
+  let currentAngle = 0
+  return statusBars.value.filter(s => s.count > 0).map(s => {
+    const angle = (s.pct / 100) * 360
+    const offset = circumference - (angle / 360) * circumference
+    const seg = {
+      ...s,
+      offset,
+      rotate: currentAngle - 90,
+    }
+    currentAngle += angle
+    return seg
+  })
 })
 
 function formatBRL(n) {
@@ -306,44 +344,68 @@ onMounted(() => {
   color: var(--color-text-secondary);
 }
 
-.status-chart {
+.status-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 12px 0 8px;
+}
+
+.status-ring-wrap {
+  width: 140px;
+  height: 140px;
+}
+
+.status-ring {
+  width: 100%;
+  height: 100%;
+}
+
+.status-legend {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 8px;
 }
 
-.status-row {
+.legend-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
-.status-label {
-  width: 140px;
-  font-size: 13px;
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.status-bar-track {
+.legend-label {
   flex: 1;
-  height: 20px;
-  background: var(--color-surface);
-  border-radius: 9999px;
-  overflow: hidden;
-}
-
-.status-bar-fill {
-  height: 100%;
-  border-radius: 9999px;
-  transition: width 0.4s ease;
-}
-
-.status-count {
-  width: 40px;
-  text-align: right;
   font-size: 13px;
+  color: var(--color-text);
+}
+
+.legend-count {
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
+  min-width: 28px;
+  text-align: right;
+}
+
+.legend-pct {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+@media (max-width: 500px) {
+  .status-grid {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
 }
 </style>
