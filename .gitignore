@@ -27,6 +27,7 @@ storage/logs/
 
 # PHP
 backend/composer.lock
+backend/bootstrap/cache/*.php
 
 # Cache
 frontend/.nuxt/

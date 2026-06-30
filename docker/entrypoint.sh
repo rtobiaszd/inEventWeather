@@ -16,10 +16,22 @@ fi
 # Registra service providers (equivale ao post-autoload-dump)
 php artisan package:discover --ansi 2>/dev/null || true
 
-# ── Aguarda o banco configurado em DB_CONNECTION ──────────────────────────
+# ── Normaliza host/porta a partir do driver configurado ───────────────────
 DB_CONN="${DB_CONNECTION:-mysql}"
-DB_H="${DB_HOST:-mysql}"
-DB_P="${DB_PORT:-3306}"
+
+case "$DB_CONN" in
+    pgsql)
+        export DB_HOST="${DB_HOST:-postgres}"
+        export DB_PORT="${DB_PORT:-5432}"
+        ;;
+    *)
+        export DB_HOST="${DB_HOST:-mysql}"
+        export DB_PORT="${DB_PORT:-3306}"
+        ;;
+esac
+
+DB_H="$DB_HOST"
+DB_P="$DB_PORT"
 
 if [ "$DB_CONN" = "pgsql" ]; then
     echo "[entrypoint] Aguardando PostgreSQL em ${DB_H}:${DB_P}..."

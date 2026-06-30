@@ -2,10 +2,10 @@
 
 return [
     /*
-     * DB_CONNECTION=mysql  → usa MySQL  (padrão)
-     * DB_CONNECTION=pgsql  → usa PostgreSQL
-     * Todas as credenciais (host, port, database, user, password) vêm das
-     * mesmas variáveis de ambiente em ambos os drivers.
+     * DB_CONNECTION=mysql  -> usa MySQL  (padrão)
+     * DB_CONNECTION=pgsql  -> usa PostgreSQL
+     * Host e porta usam defaults compatíveis com o driver quando nao forem
+     * informados explicitamente no ambiente.
      */
     'default' => env('DB_CONNECTION', 'mysql'),
 
