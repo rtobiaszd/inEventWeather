@@ -67,6 +67,8 @@ final class DatabaseConfigurationTest extends TestCase
 
         $app = require __DIR__ . '/../../bootstrap/app.php';
         $app->make(ConsoleKernel::class)->bootstrap();
+        restore_error_handler();
+        restore_exception_handler();
 
         return $app;
     }
