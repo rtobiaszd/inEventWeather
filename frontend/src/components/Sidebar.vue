@@ -1,5 +1,16 @@
 <template>
-  <nav class="sidebar">
+  <div
+    class="sidebar-overlay"
+    :class="{ 'sidebar-overlay-visible': isOpen }"
+    @click="emit('close')"
+  />
+  <nav id="app-sidebar" class="sidebar" :class="{ 'sidebar-open': isOpen }">
+    <button type="button" class="sidebar-mobile-close" aria-label="Fechar menu" @click="emit('close')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">⛅</div>
       <div class="sidebar-logo-text">
@@ -12,31 +23,31 @@
       <p class="sidebar-section-label">Menu</p>
       <ul class="sidebar-nav">
         <li>
-          <RouterLink to="/dashboard">
+          <RouterLink to="/dashboard" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Dashboard
           </RouterLink>
         </li>
         <li v-if="can('weather')">
-          <RouterLink to="/weather">
+          <RouterLink to="/weather" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
             Clima
           </RouterLink>
         </li>
         <li v-if="can('events')">
-          <RouterLink to="/events">
+          <RouterLink to="/events" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Eventos
           </RouterLink>
         </li>
         <li v-if="can('favorites')">
-          <RouterLink to="/favorites">
+          <RouterLink to="/favorites" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             Favoritos
           </RouterLink>
         </li>
         <li v-if="can('history')">
-          <RouterLink to="/history">
+          <RouterLink to="/history" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             Histórico
           </RouterLink>
@@ -49,13 +60,13 @@
       <p class="sidebar-section-label">Administração</p>
       <ul class="sidebar-nav">
         <li>
-          <RouterLink to="/admin/users">
+          <RouterLink to="/admin/users" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Usuários
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/admin/event-types">
+          <RouterLink to="/admin/event-types" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Tipos de Evento
           </RouterLink>
@@ -84,6 +95,15 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 
+defineProps({
+  isOpen: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const emit = defineEmits(['close'])
+
 const router               = useRouter()
 const { user, logout, isAdmin, can } = useAuth()
 
@@ -99,11 +119,20 @@ const roleLabel = computed(() => {
 
 async function handleLogout() {
   await logout()
+  emit('close')
   router.push({ name: 'login' })
 }
 </script>
 
 <style scoped>
+.sidebar-overlay {
+  display: none;
+}
+
+.sidebar-mobile-close {
+  display: none;
+}
+
 .sidebar-user {
   display: flex;
   align-items: center;
@@ -169,5 +198,37 @@ async function handleLogout() {
 .sidebar-logout-btn:hover {
   color: #EF4444;
   background: rgba(239,68,68,.12);
+}
+
+@media (max-width: 1024px) {
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.52);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+    z-index: 90;
+    display: block;
+  }
+
+  .sidebar-overlay-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar-mobile-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,.08);
+    color: #CBD5E1;
+  }
 }
 </style>
