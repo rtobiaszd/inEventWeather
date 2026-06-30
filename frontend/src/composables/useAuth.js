@@ -1,11 +1,35 @@
 import { ref, computed } from 'vue'
 import http from '../services/api.js'
 
+// Defaults de permissão por role (usado quando permissions === null)
+const ROLE_DEFAULTS = {
+  admin: {
+    events:    { view: true, create: true, edit: true, delete: true },
+    weather:   { view: true },
+    favorites: { view: true, manage: true },
+    history:   { view: true },
+    users:     { manage: true },
+  },
+  editor: {
+    events:    { view: true, create: true, edit: true, delete: false },
+    weather:   { view: true },
+    favorites: { view: true, manage: true },
+    history:   { view: true },
+    users:     { manage: false },
+  },
+  viewer: {
+    events:    { view: true, create: false, edit: false, delete: false },
+    weather:   { view: true },
+    favorites: { view: true, manage: false },
+    history:   { view: true },
+    users:     { manage: false },
+  },
+}
+
 // Singleton — estado compartilhado entre todos os componentes
 const _token = ref(localStorage.getItem('ew_token') || null)
 const _user  = ref(JSON.parse(localStorage.getItem('ew_user') || 'null'))
 
-// Configura o header na inicialização da app
 if (_token.value) {
   http.defaults.headers.common['Authorization'] = `Bearer ${_token.value}`
 }
@@ -20,6 +44,15 @@ function _persist(data) {
 
 export function useAuth() {
   const isLoggedIn = computed(() => !!_token.value)
+  const isAdmin    = computed(() => _user.value?.role === 'admin')
+
+  function can(module, action = 'view') {
+    const user = _user.value
+    if (!user) return false
+    const role  = user.role || 'viewer'
+    const perms = user.permissions ?? ROLE_DEFAULTS[role] ?? ROLE_DEFAULTS.viewer
+    return perms[module]?.[action] === true
+  }
 
   async function login(username, password) {
     const res = await http.post('/auth/login', { username, password })
@@ -44,8 +77,12 @@ export function useAuth() {
     user:      _user,
     token:     _token,
     isLoggedIn,
+    isAdmin,
+    can,
     login,
     register,
     logout,
   }
 }
+
+export { ROLE_DEFAULTS }

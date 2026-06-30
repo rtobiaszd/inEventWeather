@@ -230,6 +230,7 @@
       "post": {
         "tags": ["Events"],
         "summary": "Cria um novo evento",
+        "description": "Além de criar o evento, adiciona automaticamente a cidade aos favoritos do usuário (silencioso se já favoritada).",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -339,13 +340,56 @@
     "/favorites": {
       "get": {
         "tags": ["Favorites"],
-        "summary": "Lista cidades favoritas",
+        "summary": "Lista cidades favoritas com próximos eventos embutidos",
+        "description": "Retorna cada cidade favorita com um array `events` contendo os eventos futuros cadastrados naquela cidade (id, name, city, event_date, event_time, type). Utiliza 2 queries totais (favoritos + eventos) independente da quantidade de cidades.",
         "security": [{ "bearerAuth": [] }],
-        "responses": { "200": { "description": "Lista de favoritos" } }
+        "responses": {
+          "200": {
+            "description": "Lista de favoritos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id":         { "type": "integer" },
+                          "city":       { "type": "string",  "example": "São Paulo" },
+                          "country":    { "type": "string",  "example": "BR" },
+                          "created_at": { "type": "string",  "format": "date-time" },
+                          "events": {
+                            "type": "array",
+                            "description": "Próximos eventos desta cidade (data >= hoje)",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id":         { "type": "integer" },
+                                "name":       { "type": "string" },
+                                "city":       { "type": "string" },
+                                "event_date": { "type": "string", "format": "date" },
+                                "event_time": { "type": "string" },
+                                "type":       { "type": "string", "enum": ["indoor","outdoor"] }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "post": {
         "tags": ["Favorites"],
         "summary": "Adiciona cidade aos favoritos",
+        "description": "O campo `country` é opcional e assume `BR` por padrão. Ao criar um evento, a cidade é automaticamente favoritada no backend.",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -353,16 +397,16 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["city","country"],
+                "required": ["city"],
                 "properties": {
                   "city":    { "type": "string", "example": "Curitiba" },
-                  "country": { "type": "string", "example": "BR" }
+                  "country": { "type": "string", "example": "BR", "default": "BR", "description": "Opcional. Padrão: BR." }
                 }
               }
             }
           }
         },
-        "responses": { "201": { "description": "Favorito adicionado" }, "409": { "description": "Já favoritado" } }
+        "responses": { "201": { "description": "Favorito adicionado" }, "409": { "description": "Cidade já está nos favoritos" } }
       }
     },
     "/favorites/{id}": {

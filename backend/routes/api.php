@@ -2,14 +2,16 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\EventTypeController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeatherController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => response()->json([
     'success' => true,
-    'data'    => ['status' => 'ok', 'timestamp' => now()->toIso8601String(), 'version' => '2.0.0'],
+    'data'    => ['status' => 'ok', 'timestamp' => now()->toIso8601String(), 'version' => '3.0.0'],
 ]));
 
 // Públicas
@@ -32,4 +34,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/favorites',         [FavoriteController::class, 'index']);
     Route::post('/favorites',        [FavoriteController::class, 'store']);
     Route::delete('/favorites/{id}', [FavoriteController::class, 'destroy']);
+
+    // Tipos de evento — leitura para todos, escrita só para admin
+    Route::get('/event-types', [EventTypeController::class, 'index']);
+
+    // Admin
+    Route::middleware('admin')->group(function () {
+        Route::apiResource('users', UserController::class)->except(['index'])->only(['store', 'show', 'update', 'destroy']);
+        Route::get('/users',                          [UserController::class, 'index']);
+        Route::patch('/users/{id}/permissions',       [UserController::class, 'updatePermissions']);
+
+        Route::post('/event-types',         [EventTypeController::class, 'store']);
+        Route::put('/event-types/{id}',     [EventTypeController::class, 'update']);
+        Route::delete('/event-types/{id}',  [EventTypeController::class, 'destroy']);
+    });
 });

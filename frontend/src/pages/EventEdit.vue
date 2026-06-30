@@ -24,8 +24,9 @@
           <div class="form-group">
             <label class="form-label">Tipo <span class="required">*</span></label>
             <select v-model="form.type" class="form-control" required>
-              <option value="outdoor">🌤 Outdoor (ao ar livre)</option>
-              <option value="indoor">🏛 Indoor (coberto)</option>
+              <option v-for="t in eventTypes" :key="t.slug" :value="t.slug">
+                {{ t.icon }} {{ t.name }}
+              </option>
             </select>
           </div>
         </div>
@@ -77,9 +78,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { eventsApi } from '../services/api.js'
+import { eventsApi, eventTypesApi } from '../services/api.js'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorMessage from '../components/ErrorMessage.vue'
+
+const eventTypes = ref([])
 
 const route  = useRoute()
 const router = useRouter()
@@ -96,6 +99,17 @@ const submitting = ref(false)
 const errorMsg   = ref(null)
 
 onMounted(async () => {
+  // Carrega tipos e evento em paralelo
+  try {
+    const typesRes = await eventTypesApi.list()
+    eventTypes.value = typesRes.data ?? []
+  } catch {
+    eventTypes.value = [
+      { slug: 'outdoor', name: 'Outdoor', icon: '🌤' },
+      { slug: 'indoor',  name: 'Indoor',  icon: '🏛' },
+    ]
+  }
+
   try {
     const res = await eventsApi.get(route.params.id)
     const ev  = res.data

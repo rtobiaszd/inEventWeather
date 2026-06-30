@@ -21,8 +21,9 @@
           <div class="form-group">
             <label class="form-label">Tipo <span class="required">*</span></label>
             <select v-model="form.type" class="form-control" required>
-              <option value="outdoor">🌤 Outdoor (ao ar livre)</option>
-              <option value="indoor">🏛 Indoor (coberto)</option>
+              <option v-for="t in eventTypes" :key="t.slug" :value="t.slug">
+                {{ t.icon }} {{ t.name }}
+              </option>
             </select>
           </div>
         </div>
@@ -72,9 +73,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { eventsApi } from '../services/api.js'
+import { eventsApi, favoritesApi, eventTypesApi } from '../services/api.js'
 
 const router = useRouter()
 
@@ -84,6 +85,23 @@ const form = ref({
   type: 'outdoor', expected_audience: 0, description: '',
 })
 
+const eventTypes = ref([])
+
+onMounted(async () => {
+  try {
+    const res = await eventTypesApi.list()
+    eventTypes.value = res.data ?? []
+    if (eventTypes.value.length && !eventTypes.value.find(t => t.slug === form.value.type)) {
+      form.value.type = eventTypes.value[0].slug
+    }
+  } catch {
+    eventTypes.value = [
+      { slug: 'outdoor', name: 'Outdoor', icon: '🌤' },
+      { slug: 'indoor',  name: 'Indoor',  icon: '🏛' },
+    ]
+  }
+})
+
 const submitting = ref(false)
 const errorMsg   = ref(null)
 
@@ -91,7 +109,11 @@ async function submit() {
   submitting.value = true
   errorMsg.value   = null
   try {
-    await eventsApi.create(form.value)
+    const res = await eventsApi.create(form.value)
+    // Auto-favorita a cidade (o backend já faz isso, mas o frontend reforça para garantir cache local)
+    try {
+      await favoritesApi.add({ city: form.value.city, country: form.value.country || 'BR' })
+    } catch { /* silencioso — 409 = já favorita */ }
     router.push({ name: 'events' })
   } catch (e) {
     errorMsg.value = e.message

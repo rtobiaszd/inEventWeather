@@ -33,7 +33,6 @@ RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions sto
 
 COPY docker/entrypoint.sh /entrypoint.sh
 COPY docker/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
-COPY docker/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-www.conf
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 9000
