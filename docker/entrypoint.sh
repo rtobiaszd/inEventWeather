@@ -64,5 +64,5 @@ echo "[entrypoint] Cacheando config, rotas e eventos..."
 php artisan config:cache
 php artisan route:cache
 php artisan event:cache
-echo "[entrypoint] Iniciando php-fpm..."
-exec php-fpm
+echo "[entrypoint] Iniciando Laravel HTTP server na porta ${PORT:-8080}..."
+exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
