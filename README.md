@@ -1,6 +1,6 @@
 # inEvent — Event Weather Dashboard
 
-Sistema para gerenciamento de eventos com análise climática em tempo real. Ao cadastrar um evento com cidade e data, o sistema consulta automaticamente o clima atual, gera uma **previsão para o dia do evento** e calcula um **índice de risco climático** (temperatura, vento, chuva, qualidade do ar).
+Sistema para gerenciamento de eventos com análise climática em tempo real. Ao cadastrar um evento com cidade e data, o sistema consulta automaticamente o clima atual, gera uma **previsão para o dia do evento** e calcula um **índice de risco climático** (temperatura, vento, chuva, qualidade do ar). O dashboard também usa um **mapa Leaflet** como fundo do card principal de clima, posicionando os eventos pelas coordenadas geográficas.
 
 ## Stack
 
@@ -10,7 +10,7 @@ Sistema para gerenciamento de eventos com análise climática em tempo real. Ao 
 | ORM       | Eloquent + migrations               |
 | Banco     | **MySQL 8.0** ou **PostgreSQL 16** (selecionável via `.env`) |
 | Cache     | **Redis 7** (TTL: geo 24h, atual 10min, previsão 30min) |
-| Frontend  | **Vue 3** + Vite + Tailwind CSS     |
+| Frontend  | **Vue 3** + Vite + Leaflet          |
 | Auth      | Bearer token (24h), `personal_access_tokens` |
 | Clima     | OpenWeather API (Current, Forecast, Air Pollution) |
 | Container | Docker Compose (6 serviços)         |
@@ -117,6 +117,31 @@ Documentação completa: **`http://localhost:8080/docs`**
 | POST   | `/api/favorites`       | ✓    | Adiciona cidade (country opcional, padrão BR) |
 | DELETE | `/api/favorites/{id}`  | ✓    | Remove cidade dos favoritos              |
 
+## Novas features geoespaciais
+
+- O card principal do dashboard renderiza um mapa **Leaflet** como fundo visual.
+- Eventos aceitam `latitude` e `longitude` opcionais no cadastro e na edição.
+- Quando as coordenadas não são enviadas, o backend tenta geocodificar automaticamente com `city` + `country`.
+- Eventos antigos sem coordenadas são enriquecidos automaticamente ao listar ou consultar detalhes.
+- `GET /api/weather/search` agora retorna `coordinates`, usadas para centralizar o mapa no frontend.
+
+### Exemplo de payload de evento com coordenadas
+
+```json
+{
+  "name": "Festival de Verão",
+  "city": "São Paulo",
+  "country": "BR",
+  "latitude": -23.55052,
+  "longitude": -46.633308,
+  "event_date": "2026-08-15",
+  "event_time": "18:00",
+  "type": "outdoor",
+  "expected_audience": 5000,
+  "description": "Evento ao ar livre no centro da cidade"
+}
+```
+
 ### Cidades favoritas com eventos (`GET /api/favorites`)
 
 Cada item do array retornado inclui um campo `events` com os próximos eventos cadastrados naquela cidade (consulta em 2 queries totais):
@@ -142,6 +167,12 @@ Cada item do array retornado inclui um campo `events` com os próximos eventos c
 ### Auto-favoritar cidade ao criar evento
 
 Ao criar um evento via `POST /api/events`, o backend automaticamente adiciona a cidade aos favoritos (operação idempotente — ignora silenciosamente se já existir).
+
+### Coordenadas automáticas dos eventos
+
+- Se `latitude` e `longitude` forem enviadas, elas são persistidas e usadas como fonte primária do mapa.
+- Se as coordenadas forem omitidas, a API tenta resolver a posição pelo geocoding da OpenWeather.
+- Eventos antigos já salvos sem coordenadas são atualizados automaticamente ao passar por `GET /api/events` ou `GET /api/events/{id}`.
 
 ### Previsão climática no evento (`event_forecast`)
 
@@ -185,6 +216,25 @@ Ao chamar `GET /api/events/{id}`, o campo `event_forecast` é calculado automati
 }
 ```
 
+### Resposta do clima com coordenadas
+
+`GET /api/weather/search` passou a retornar também as coordenadas do ponto consultado:
+
+```json
+{
+  "city": "São Paulo",
+  "country": "BR",
+  "coordinates": {
+    "latitude": -23.5505,
+    "longitude": -46.6333
+  },
+  "current": {
+    "temperature": 25.2,
+    "feels_like": 25.3
+  }
+}
+```
+
 | Status        | Score   |
 |---------------|---------|
 | `LOW_RISK`    | 0–29    |
@@ -215,6 +265,14 @@ docker exec -it event-weather-php php artisan key:generate
 # Rebuild completo (limpa volumes)
 docker compose down -v && docker compose up -d --build
 ```
+
+## Testes
+
+O backend cobre agora os cenários centrais das novas features geoespaciais:
+
+- persistência de `latitude` e `longitude` quando enviadas manualmente
+- geocodificação automática ao criar evento sem coordenadas
+- backfill automático de coordenadas em eventos legados ao listar a API
 
 ## Cache (Redis)
 

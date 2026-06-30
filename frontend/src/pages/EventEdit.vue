@@ -57,6 +57,19 @@
           </div>
         </div>
 
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Latitude</label>
+            <input v-model.number="form.latitude" type="number" class="form-control" step="0.000001" min="-90" max="90" placeholder="-23.550520" />
+            <span class="form-hint">Use coordenadas exatas para mostrar o evento no mapa do dashboard.</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Longitude</label>
+            <input v-model.number="form.longitude" type="number" class="form-control" step="0.000001" min="-180" max="180" placeholder="-46.633308" />
+            <span class="form-hint">Sem coordenadas, a API recalcula a posição pela cidade.</span>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label">Descrição</label>
           <textarea v-model="form.description" class="form-control" />
@@ -91,6 +104,7 @@ const form = ref({
   name: '', city: '', country: 'BR',
   event_date: '', event_time: '',
   type: 'outdoor', expected_audience: 0, description: '',
+  latitude: null, longitude: null,
 })
 
 const loading    = ref(true)
@@ -122,6 +136,8 @@ onMounted(async () => {
       type:              ev.type,
       expected_audience: ev.expected_audience,
       description:       ev.description ?? '',
+      latitude:          ev.latitude,
+      longitude:         ev.longitude,
     }
   } catch (e) {
     loadError.value = e.message

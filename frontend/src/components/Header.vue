@@ -51,6 +51,7 @@ const pages = {
   events:          { title: 'Eventos',          sub: 'Gerencie seus eventos' },
   'events.create': { title: 'Novo Evento',      sub: 'Cadastre um novo evento' },
   'events.edit':   { title: 'Editar Evento',    sub: 'Atualize os dados do evento' },
+  'events.map':    { title: 'Mapa de Eventos',  sub: 'Visualize todos os eventos no mapa' },
   favorites:       { title: 'Favoritos',        sub: 'Suas cidades favoritas' },
   history:         { title: 'Histórico',        sub: 'Consultas climáticas anteriores' },
 }

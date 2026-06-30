@@ -10,10 +10,15 @@ class Event extends Model
         'name', 'city', 'country',
         'event_date', 'event_time',
         'type', 'expected_audience', 'description',
+        'latitude', 'longitude',
     ];
 
     protected function casts(): array
     {
-        return ['expected_audience' => 'integer'];
+        return [
+            'expected_audience' => 'integer',
+            'latitude' => 'float',
+            'longitude' => 'float',
+        ];
     }
 }

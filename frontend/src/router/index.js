@@ -42,6 +42,12 @@ const routes = [
     meta: { title: 'Editar Evento', module: 'events', action: 'edit' },
   },
   {
+    path: '/events/map',
+    name: 'events.map',
+    component: () => import('../pages/EventsMap.vue'),
+    meta: { title: 'Mapa de Eventos', module: 'events' },
+  },
+  {
     path: '/favorites',
     name: 'favorites',
     component: () => import('../pages/Favorites.vue'),

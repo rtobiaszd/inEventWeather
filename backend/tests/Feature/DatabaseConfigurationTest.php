@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Facade;
 use PHPUnit\Framework\TestCase;
 
 final class DatabaseConfigurationTest extends TestCase
@@ -12,6 +14,7 @@ final class DatabaseConfigurationTest extends TestCase
         $this->clearEnvironment([
             'APP_ENV',
             'CACHE_DRIVER',
+            'APP_CONFIG_CACHE',
             'DB_CONNECTION',
             'DB_HOST',
             'DB_PORT',
@@ -56,8 +59,13 @@ final class DatabaseConfigurationTest extends TestCase
      */
     private function bootApplication(array $variables)
     {
+        Env::enablePutenv();
+        Facade::clearResolvedInstances();
+        Facade::setFacadeApplication(null);
+
         $this->setEnvironment([
             'APP_ENV' => 'testing',
+            'APP_CONFIG_CACHE' => __DIR__ . '/../../bootstrap/cache/testing-config.php',
             'CACHE_DRIVER' => 'array',
             'QUEUE_CONNECTION' => 'sync',
             'SESSION_DRIVER' => 'array',
@@ -67,6 +75,7 @@ final class DatabaseConfigurationTest extends TestCase
 
         $app = require __DIR__ . '/../../bootstrap/app.php';
         $app->make(ConsoleKernel::class)->bootstrap();
+        Facade::setFacadeApplication($app);
         restore_error_handler();
         restore_exception_handler();
 

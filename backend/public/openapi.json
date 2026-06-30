@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "inEvent — Event Weather Dashboard API",
-    "description": "API REST para gerenciamento de eventos com análise climática integrada via OpenWeather. Autenticação via Laravel Sanctum (Bearer token).",
-    "version": "2.0.0",
+    "description": "API REST para gerenciamento de eventos com análise climática integrada via OpenWeather. Autenticação via Laravel Sanctum (Bearer token). Inclui coordenadas geográficas dos eventos e suporte ao dashboard com mapa Leaflet.",
+    "version": "2.1.0",
     "contact": { "email": "dev@inevent.local" }
   },
   "servers": [
@@ -57,6 +57,8 @@
           "name":              { "type": "string",  "example": "Festival de Música de Verão" },
           "city":              { "type": "string",  "example": "São Paulo" },
           "country":           { "type": "string",  "example": "BR" },
+          "latitude":          { "type": "number",  "format": "float", "nullable": true, "example": -23.55052, "description": "Opcional. Coordenada usada para posicionar o evento no mapa." },
+          "longitude":         { "type": "number",  "format": "float", "nullable": true, "example": -46.633308, "description": "Opcional. Coordenada usada para posicionar o evento no mapa." },
           "event_date":        { "type": "string",  "format": "date",    "example": "2026-08-15" },
           "event_time":        { "type": "string",  "example": "18:00:00" },
           "type":              { "type": "string",  "enum": ["indoor","outdoor"] },
@@ -113,6 +115,56 @@
             }
           }
         ]
+      },
+      "WeatherCoordinates": {
+        "type": "object",
+        "properties": {
+          "latitude": { "type": "number", "format": "float", "example": -23.55052 },
+          "longitude": { "type": "number", "format": "float", "example": -46.633308 }
+        }
+      },
+      "WeatherSearchResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "city": { "type": "string", "example": "São Paulo" },
+              "country": { "type": "string", "example": "BR" },
+              "coordinates": { "$ref": "#/components/schemas/WeatherCoordinates" },
+              "current": {
+                "type": "object",
+                "properties": {
+                  "temperature": { "type": "number", "example": 25.2 },
+                  "feels_like": { "type": "number", "example": 25.3 },
+                  "temp_min": { "type": "number", "example": 22.1 },
+                  "temp_max": { "type": "number", "example": 27.8 },
+                  "humidity": { "type": "integer", "example": 57 },
+                  "pressure": { "type": "integer", "example": 1019 },
+                  "wind_speed": { "type": "number", "example": 14.5 },
+                  "wind_direction": { "type": "integer", "example": 120 },
+                  "visibility": { "type": "number", "example": 10 },
+                  "weather_main": { "type": "string", "example": "Clouds" },
+                  "weather_description": { "type": "string", "example": "nublado" },
+                  "icon": { "type": "string", "example": "04d" },
+                  "clouds": { "type": "integer", "example": 65 }
+                }
+              },
+              "aqi": { "type": "integer", "example": 2 },
+              "risk": {
+                "type": "object",
+                "properties": {
+                  "score": { "type": "integer", "example": 15 },
+                  "status": { "type": "string", "enum": ["LOW_RISK","MEDIUM_RISK","HIGH_RISK"] },
+                  "recommendation": { "type": "string" },
+                  "alerts": { "type": "array", "items": { "type": "object" } },
+                  "summary": { "type": "object" }
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -222,6 +274,7 @@
       "get": {
         "tags": ["Events"],
         "summary": "Lista todos os eventos ordenados por data",
+        "description": "Eventos sem coordenadas persistidas podem ser enriquecidos automaticamente com geocoding durante a listagem.",
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": { "description": "Lista de eventos", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "array", "items": { "$ref": "#/components/schemas/Event" } } } } } } }
@@ -230,7 +283,7 @@
       "post": {
         "tags": ["Events"],
         "summary": "Cria um novo evento",
-        "description": "Além de criar o evento, adiciona automaticamente a cidade aos favoritos do usuário (silencioso se já favoritada).",
+        "description": "Além de criar o evento, adiciona automaticamente a cidade aos favoritos do usuário (silencioso se já favoritada). Se `latitude` e `longitude` não forem enviadas, a API tenta obtê-las via geocoding por `city` + `country`.",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -243,6 +296,8 @@
                   "name":              { "type": "string",  "example": "Hackathon 2026" },
                   "city":              { "type": "string",  "example": "Campinas" },
                   "country":           { "type": "string",  "example": "BR" },
+                  "latitude":          { "type": "number", "format": "float", "nullable": true, "example": -22.90556 },
+                  "longitude":         { "type": "number", "format": "float", "nullable": true, "example": -47.06083 },
                   "event_date":        { "type": "string",  "format": "date", "example": "2026-10-10" },
                   "event_time":        { "type": "string",  "example": "09:00" },
                   "type":              { "type": "string",  "enum": ["indoor","outdoor"] },
@@ -273,6 +328,7 @@
       "put": {
         "tags": ["Events"],
         "summary": "Atualiza um evento",
+        "description": "Aceita atualização manual de `latitude` e `longitude`. Se cidade ou país mudarem e as coordenadas não forem informadas, a API tenta recalcular automaticamente.",
         "security": [{ "bearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
         "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Event" } } } },
@@ -296,12 +352,22 @@
       "get": {
         "tags": ["Weather"],
         "summary": "Clima atual de uma cidade (salva no histórico)",
+        "description": "Retorna também as coordenadas usadas pelo dashboard para centralizar o mapa do card principal.",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
           { "name": "city",    "in": "query", "required": true,  "schema": { "type": "string" }, "example": "São Paulo" },
           { "name": "country", "in": "query", "required": false, "schema": { "type": "string" }, "example": "BR" }
         ],
-        "responses": { "200": { "description": "Dados climáticos atuais" } }
+        "responses": {
+          "200": {
+            "description": "Dados climáticos atuais",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WeatherSearchResponse" }
+              }
+            }
+          }
+        }
       }
     },
     "/weather/forecast": {

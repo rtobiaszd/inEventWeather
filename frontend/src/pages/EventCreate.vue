@@ -54,6 +54,19 @@
           </div>
         </div>
 
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Latitude</label>
+            <input v-model.number="form.latitude" type="number" class="form-control" step="0.000001" min="-90" max="90" placeholder="-23.550520" />
+            <span class="form-hint">Recomendado para posicionar o evento com precisão no mapa.</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Longitude</label>
+            <input v-model.number="form.longitude" type="number" class="form-control" step="0.000001" min="-180" max="180" placeholder="-46.633308" />
+            <span class="form-hint">Se ficar em branco, a API tenta localizar pela cidade.</span>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label">Descrição</label>
           <textarea v-model="form.description" class="form-control" placeholder="Descreva o evento..." />
@@ -83,6 +96,7 @@ const form = ref({
   name: '', city: '', country: 'BR',
   event_date: '', event_time: '',
   type: 'outdoor', expected_audience: 0, description: '',
+  latitude: null, longitude: null,
 })
 
 const eventTypes = ref([])

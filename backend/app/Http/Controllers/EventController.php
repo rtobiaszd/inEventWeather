@@ -11,9 +11,18 @@ use Illuminate\Http\Request;
 
 class EventController extends Controller
 {
+    public function __construct(
+        private WeatherService $weatherService,
+    ) {}
+
     public function index(): JsonResponse
     {
-        return $this->success(Event::orderBy('event_date')->get());
+        $events = Event::orderBy('event_date')->get()
+            ->map(function (Event $event) {
+                return $this->ensureEventCoordinates($event);
+            });
+
+        return $this->success($events);
     }
 
     public function store(Request $request): JsonResponse
@@ -27,8 +36,11 @@ class EventController extends Controller
             'type'              => 'required|string|max:50',
             'expected_audience' => 'nullable|integer|min:0',
             'description'       => 'nullable|string',
+            'latitude'          => 'nullable|numeric|between:-90,90|required_with:longitude',
+            'longitude'         => 'nullable|numeric|between:-180,180|required_with:latitude',
         ]);
 
+        $data = $this->resolveCoordinates($data);
         $event = Event::create($data);
 
         // Auto-adiciona a cidade aos favoritos (silencioso se já existir)
@@ -51,6 +63,7 @@ class EventController extends Controller
             return $this->error('Evento não encontrado', 404);
         }
 
+        $event = $this->ensureEventCoordinates($event);
         $eventData = $event->toArray();
 
         try {
@@ -108,8 +121,11 @@ class EventController extends Controller
             'type'              => 'sometimes|string|max:50',
             'expected_audience' => 'nullable|integer|min:0',
             'description'       => 'nullable|string',
+            'latitude'          => 'nullable|numeric|between:-90,90|required_with:longitude',
+            'longitude'         => 'nullable|numeric|between:-180,180|required_with:latitude',
         ]);
 
+        $data = $this->resolveCoordinates($data, $event);
         $event->update($data);
 
         return $this->success($event->fresh());
@@ -126,5 +142,55 @@ class EventController extends Controller
         $event->delete();
 
         return $this->success(['message' => 'Evento removido com sucesso']);
+    }
+
+    private function resolveCoordinates(array $data, ?Event $event = null): array
+    {
+        if (array_key_exists('latitude', $data) && array_key_exists('longitude', $data)) {
+            return $data;
+        }
+
+        $city = $data['city'] ?? $event?->city;
+        $country = strtoupper($data['country'] ?? $event?->country ?? 'BR');
+
+        if (!$city) {
+            return $data;
+        }
+
+        $cityChanged = array_key_exists('city', $data) || array_key_exists('country', $data);
+        if (!$cityChanged && $event?->latitude !== null && $event?->longitude !== null) {
+            return $data;
+        }
+
+        try {
+            $coords = $this->weatherService->geocode($city, $country);
+            $data['latitude'] = $coords['lat'];
+            $data['longitude'] = $coords['lon'];
+        } catch (\Throwable) {
+            if ($event?->latitude !== null && $event?->longitude !== null) {
+                return $data;
+            }
+        }
+
+        return $data;
+    }
+
+    private function ensureEventCoordinates(Event $event): Event
+    {
+        if ($event->latitude !== null && $event->longitude !== null) {
+            return $event;
+        }
+
+        $data = $this->resolveCoordinates([], $event);
+        if (!isset($data['latitude'], $data['longitude'])) {
+            return $event;
+        }
+
+        $event->forceFill([
+            'latitude' => $data['latitude'],
+            'longitude' => $data['longitude'],
+        ])->save();
+
+        return $event->fresh();
     }
 }

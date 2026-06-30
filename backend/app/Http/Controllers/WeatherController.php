@@ -44,6 +44,10 @@ class WeatherController extends Controller
             return $this->success([
                 'city'    => $city,
                 'country' => $country,
+                'coordinates' => [
+                    'latitude' => (float) ($weather['coord']['lat'] ?? 0),
+                    'longitude' => (float) ($weather['coord']['lon'] ?? 0),
+                ],
                 'current' => [
                     'temperature'         => round((float) ($weather['main']['temp'] ?? 0), 1),
                     'feels_like'          => round((float) ($weather['main']['feels_like'] ?? 0), 1),

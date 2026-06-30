@@ -41,7 +41,7 @@
 
       <!-- Main weather + metrics row -->
       <div class="grid-2">
-        <WeatherCard :data="weather" />
+        <WeatherCard :data="weather" :events="dashboardEvents" />
 
         <div class="stack-sm">
           <!-- Risk card -->
@@ -141,7 +141,7 @@ const forecast= ref([])
 const loading = ref(false)
 const forecastLoading = ref(false)
 const error   = ref(null)
-const recentEvents  = ref([])
+const dashboardEvents = ref([])
 const eventsLoading = ref(false)
 
 const favorited  = ref(false)
@@ -164,6 +164,8 @@ const riskColor = computed(() => {
   if (s === 'MEDIUM_RISK') return '#F59E0B'
   return '#22C55E'
 })
+
+const recentEvents = computed(() => dashboardEvents.value.slice(0, 5))
 
 function alertIcon(type) {
   return { heat: '🌡', cold: '🧊', wind: '💨', rain: '🌧', air: '🌫', humidity: '💧' }[type] ?? '⚠️'
@@ -218,7 +220,7 @@ async function loadEvents() {
   eventsLoading.value = true
   try {
     const res = await eventsApi.list()
-    recentEvents.value = (res.data ?? []).slice(0, 5)
+    dashboardEvents.value = res.data ?? []
   } catch {
     // silently ignore
   } finally {
