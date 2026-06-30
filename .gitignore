@@ -1,0 +1,33 @@
+# Ambiente
+.env
+backend/.env
+
+# Dependências
+node_modules/
+vendor/
+
+# Build
+frontend/dist/
+frontend/.vite/
+
+# Docker volumes
+mysql_data/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+storage/logs/
+
+# PHP
+backend/composer.lock
+
+# Cache
+frontend/.nuxt/
+.cache/

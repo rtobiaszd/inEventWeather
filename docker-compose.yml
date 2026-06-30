@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: event-weather-mysql
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect='SET NAMES utf8mb4'
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-event_weather}
+      MYSQL_USER: ${DB_USER:-weather_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-weather_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - event-weather-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: event-weather-redis
+    restart: unless-stopped
+    networks:
+      - event-weather-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  php:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: event-weather-php
+    restart: unless-stopped
+    volumes:
+      # vendor/ fica no host filesystem — o entrypoint instala se ausente
+      - ./backend:/var/www/html
+    environment:
+      APP_KEY: base64:Q3VzdG9tS2V5Rm9yRXZlbnRXZWF0aGVyRGFzaGJvYXI=
+      APP_ENV: ${APP_ENV:-development}
+      APP_DEBUG: "true"
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_NAME:-event_weather}
+      DB_USERNAME: ${DB_USER:-weather_user}
+      DB_PASSWORD: ${DB_PASSWORD:-weather_pass}
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY}
+      CACHE_DRIVER: redis
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - event-weather-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: event-weather-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./backend:/var/www/html:ro
+    depends_on:
+      - php
+    networks:
+      - event-weather-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: event-weather-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8080/api
+    networks:
+      - event-weather-net
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  event-weather-net:
+    driver: bridge
