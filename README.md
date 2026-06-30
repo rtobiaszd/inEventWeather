@@ -112,6 +112,9 @@ Documentação completa: **`http://localhost:8080/docs`**
 | GET    | `/api/weather/forecast`| ✓    | Previsão 5 dias / 3h                     |
 | GET    | `/api/history`         | ✓    | Histórico de consultas                   |
 | GET    | `/api/weather/air-quality`| ✓ | Qualidade do ar (AQI + componentes)      |
+| GET    | `/api/weather/best-dates`| ✓ | Recomenda melhores datas para evento outdoor |
+| GET    | `/api/events/risk-alerts`| ✓ | Alertas consolidados de risco climático  |
+| GET    | `/api/events/financial-insights`| ✓ | Inteligência financeira + risco climático |
 | GET    | `/api/history`         | ✓    | Histórico de consultas                   |
 | GET    | `/api/favorites`       | ✓    | Cidades favoritas com eventos embutidos  |
 | POST   | `/api/favorites`       | ✓    | Adiciona cidade (country opcional, padrão BR) |
@@ -306,3 +309,107 @@ Resultado: latência cai de ~4600ms (cold) para ~10ms (warm).
 | `event-weather-php`     | —     | Laravel + php-fpm     |
 | `event-weather-nginx`   | 8080  | Proxy reverso         |
 | `event-weather-frontend`| 5173  | Vue 3 + Vite (HMR)   |
+
+
+## Smart Risk Intelligence
+
+Funcionalidades de inteligência climática implementadas em **30/06/2026**:
+
+### Alertas Inteligentes (`/api/events/risk-alerts`)
+
+Endpoint que analisa todos os eventos dos próximos 14 dias e retorna:
+- Score e status de risco (HIGH_RISK, MEDIUM_RISK, LOW_RISK) por evento
+- Alertas específicos (calor, vento, chuva, qualidade do ar)
+- Previsão climática para o dia/hora de cada evento
+- Ações recomendadas baseadas no nível de risco
+
+Exibido no **Dashboard** como um painel consolidado com:
+- Cards coloridos por severidade (vermelho = alto risco, amarelo = médio)
+- Badge de alerta no **sidebar** com contagem total
+- Link direto para edição de cada evento em risco
+
+### Recomendador de Data Ideal (`/api/weather/best-dates`)
+
+Endpoint que analisa a previsão dos próximos 14 dias para uma cidade e retorna:
+- Score de 0 a 100 para cada data (menor = melhor)
+- Classificação: IDEAL, FAVORABLE, CAUTION, AVOID
+- Métricas detalhadas: temperatura, chuva máxima, vento máximo, umidade
+- Condição predominante (limpo, nublado, chuvoso, etc.)
+- Melhor data destacada automaticamente
+
+Página dedicada em `/events/best-dates` com:
+- Cards visuais com score ring para cada dia (com animação)
+- Destaque colorido da melhor data
+- Ordenação da melhor para a pior data
+- **Personalização de pesos**: sliders para ajustar importância de chuva, vento, temperatura e umidade — o ranking é recalculado instantaneamente no frontend
+- **Gráfico de tendência climática**: SVG interativo com linha de temperatura, barras de chuva e zonas de risco ao longo dos 14 dias
+- **Botão "Criar Evento"** em cada card e no destaque — redireciona para `/events/create?city=...&date=...` com dados pré-preenchidos
+- **Acesso rápido a cidades favoritas**: botões na horizontal para trocar de cidade instantaneamente
+- **Auto-search** via query param `?city=` na URL
+- **Cidades populares** sugeridas no empty state
+
+## Financial Weather Intelligence (`/api/events/financial-insights`)
+
+Implementado em **30/06/2026** — cruza dados financeiros dos eventos com análise de risco climático para gerar inteligência de negócio.
+
+### O que entrega
+
+- **Capital em Risco**: soma dos orçamentos de eventos classificados como `HIGH_RISK`
+- **ROI Ajustado pelo Clima**: receita projetada com desconto baseado no score de risco
+- **Exposição Financeira**: `budget × (risk_score / 100)` — quanto do orçamento está comprometido
+- **Receita Ajustada**: `revenue × (1 - risk_score / 200)` — projeção realista de receita
+- **Matriz Risco × Orçamento**: gráfico de barras mostrando distribuição do orçamento por nível de risco
+- **Portfólio**: total de eventos, orçamento total, receita total, lucro/prejuízo, ROI médio
+
+### Como funciona
+
+O backend percorre todos os eventos, consulta o clima atual de cada cidade via OpenWeather (com cache Redis), calcula o risk score via `WeatherRiskService` e computa os indicadores financeiros.
+
+Nenhum campo novo em banco — tudo é calculado em tempo real com dados já existentes.
+
+### Exibição no Dashboard
+
+Um novo painel **"Inteligência Financeira"** aparece no Dashboard quando há eventos cadastrados, exibindo:
+
+- Cards com métricas-chave (eventos, orçamento, receita, lucro, ROI, capital em risco)
+- Barra de distribuição do orçamento por nível de risco (LOW / MEDIUM / HIGH)
+- Botão para atualização manual dos dados
+
+### Exemplo de resposta da API
+
+```json
+{
+  "success": true,
+  "data": {
+    "summary": {
+      "total_events": 10,
+      "total_budget": 250000.00,
+      "total_revenue": 320000.00,
+      "total_profit": 70000.00,
+      "avg_roi": 28.0,
+      "capital_at_risk": 85000.00,
+      "high_risk_financial": 3,
+      "high_risk_count": 3,
+      "medium_risk_count": 2,
+      "profitable_count": 7
+    },
+    "events": [
+      {
+        "event_id": 1,
+        "event_name": "Festival de Verão",
+        "budget": 50000.00,
+        "revenue": 80000.00,
+        "profit": 30000.00,
+        "roi": 60.0,
+        "risk_status": "LOW_RISK",
+        "risk_score": 15,
+        "financial_exposure": 7500.00,
+        "adjusted_revenue": 74000.00
+      }
+    ],
+    "distribution": {
+      "by_risk": { "LOW_RISK": 5, "MEDIUM_RISK": 2, "HIGH_RISK": 3, "unknown": 0 },
+      "budget_at_risk": { "LOW_RISK": 100000, "MEDIUM_RISK": 65000, "HIGH_RISK": 85000, "unknown": 0 }
+    }
+  }
+}
