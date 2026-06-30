@@ -3,14 +3,22 @@
     <div class="page-header">
       <div>
         <h2>Eventos</h2>
-        <p v-if="filtered.length > 0">{{ filtered.length }} evento{{ filtered.length !== 1 ? 's' : '' }} cadastrado{{ filtered.length !== 1 ? 's' : '' }}</p>
+        <p v-if="filtered.length > 0">{{ filtered.length }} evento{{ filtered.length !== 1 ? 's' : '' }} encontrado{{ filtered.length !== 1 ? 's' : '' }}</p>
         <p v-else>Gerencie seus eventos com análise climática</p>
       </div>
       <div class="flex-gap">
-        <RouterLink to="/events/agenda" class="btn btn-ghost btn-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Agenda
-        </RouterLink>
+        <button class="btn btn-ghost btn-sm" @click="exportCSV" :disabled="filtered.length === 0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+          <RouterLink to="/events/agenda" class="btn btn-ghost btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Agenda
+          </RouterLink>
+          <RouterLink to="/events/best-dates" class="btn btn-ghost btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Melhor Data
+          </RouterLink>
         <RouterLink to="/events/map" class="btn btn-ghost btn-sm">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
           Mapa
@@ -22,16 +30,37 @@
       </div>
     </div>
 
-    <!-- Filtro por tipo -->
-    <div v-if="eventTypes.length" class="filter-bar">
-      <button
-        v-for="t in typeFilters"
-        :key="t.slug"
-        :class="['btn', 'btn-sm', activeFilter === t.slug ? 'btn-primary' : 'btn-ghost']"
-        @click="activeFilter = t.slug"
-      >
-        {{ t.icon }} {{ t.name }}
-      </button>
+    <!-- Barra de filtros: busca + tipo + status -->
+    <div class="filter-bar">
+      <div class="filter-search-group">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Buscar por nome ou cidade..."
+          class="filter-search-input"
+        />
+      </div>
+
+      <select v-model="statusFilter" class="form-control filter-select">
+        <option value="all">Todos status</option>
+        <option value="planned">📋 Planejados</option>
+        <option value="confirmed">✅ Confirmados</option>
+        <option value="in_progress">▶ Em andamento</option>
+        <option value="completed">🏁 Realizados</option>
+        <option value="cancelled">❌ Cancelados</option>
+      </select>
+
+      <div class="filter-type-group">
+        <button
+          v-for="t in typeFilters"
+          :key="t.slug"
+          :class="['btn', 'btn-sm', activeFilter === t.slug ? 'btn-primary' : 'btn-ghost']"
+          @click="activeFilter = t.slug"
+        >
+          {{ t.icon }} {{ t.name }}
+        </button>
+      </div>
     </div>
 
     <LoadingState v-if="loading" message="Carregando eventos..." />
@@ -66,11 +95,13 @@ import ErrorMessage from '../components/ErrorMessage.vue'
 const router    = useRouter()
 const { can }   = useAuth()
 
-const events     = ref([])
-const eventTypes = ref([])
-const loading    = ref(false)
-const error      = ref(null)
-const activeFilter = ref('all')
+const events        = ref([])
+const eventTypes    = ref([])
+const loading       = ref(false)
+const error         = ref(null)
+const activeFilter  = ref('all')
+const searchQuery   = ref('')
+const statusFilter  = ref('all')
 
 const deleteTarget = ref(null)
 const deleting     = ref(false)
@@ -81,9 +112,59 @@ const typeFilters = computed(() => [
 ])
 
 const filtered = computed(() => {
-  if (activeFilter.value === 'all') return events.value
-  return events.value.filter(e => e.type === activeFilter.value)
+  let list = events.value
+
+  if (activeFilter.value !== 'all') {
+    list = list.filter(e => e.type === activeFilter.value)
+  }
+
+  if (statusFilter.value !== 'all') {
+    list = list.filter(e => e.status === statusFilter.value)
+  }
+
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(e =>
+      (e.name || '').toLowerCase().includes(q) ||
+      (e.city || '').toLowerCase().includes(q)
+    )
+  }
+
+  return list
 })
+
+function formatDate(date) {
+  if (!date) return ''
+  return new Date(date + 'T00:00:00').toLocaleDateString('pt-BR')
+}
+
+function exportCSV() {
+  const headers = ['Nome','Cidade','País','Data','Horário','Tipo','Status','Local','Organizador','Público','Orçamento','Receita','Preço Ingresso']
+  const rows = filtered.value.map(e => [
+    e.name,
+    e.city,
+    e.country,
+    formatDate(e.event_date),
+    e.event_time || '',
+    e.type === 'outdoor' ? 'Outdoor' : 'Indoor',
+    ({ planned: 'Planejado', confirmed: 'Confirmado', in_progress: 'Em andamento', completed: 'Realizado', cancelled: 'Cancelado' })[e.status] || e.status,
+    e.venue || '',
+    e.organizer || '',
+    e.expected_audience || '',
+    e.budget || '',
+    e.revenue || '',
+    e.ticket_price || '',
+  ])
+
+  const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `eventos_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 async function load() {
   loading.value = true
@@ -125,6 +206,53 @@ onMounted(load)
 
 <style scoped>
 .filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.filter-search-group {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.filter-search-group svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.filter-search-input {
+  width: 100%;
+  padding: 7px 10px 7px 32px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.filter-search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.filter-select {
+  width: auto;
+  min-width: 150px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.filter-type-group {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;

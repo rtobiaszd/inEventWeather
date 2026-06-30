@@ -103,6 +103,155 @@ class WeatherController extends Controller
         }
     }
 
+    public function bestDates(Request $request): JsonResponse
+    {
+        $request->validate([
+            'city'    => 'required|string|max:100',
+            'country' => 'nullable|string|max:10',
+        ]);
+
+        $city    = trim($request->city);
+        $country = strtoupper(trim($request->input('country', 'BR')));
+
+        try {
+            $forecast = $this->weatherService->getForecast($city, $country);
+            $list     = $forecast['list'] ?? [];
+
+            if (empty($list)) {
+                return $this->error('Previsão não disponível para esta cidade.', 422);
+            }
+
+            // Agrupa previsão por dia
+            $days = [];
+            foreach ($list as $item) {
+                $date = explode(' ', $item['dt_txt'])[0];
+                if (!isset($days[$date])) {
+                    $days[$date] = [];
+                }
+                $days[$date][] = $item;
+            }
+
+            // Calcula score para cada dia (0 = ideal, 100 = péssimo)
+            $results = [];
+            $now = now()->startOfDay();
+            foreach ($days as $date => $items) {
+                $dateObj = \Carbon\Carbon::parse($date);
+                if ($dateObj->lessThan($now) || $dateObj->greaterThan($now->copy()->addDays(14))) {
+                    continue;
+                }
+
+                $temps      = [];
+                $rains      = [];
+                $winds      = [];
+                $humidities = [];
+
+                foreach ($items as $item) {
+                    $temps[]      = (float) ($item['main']['temp'] ?? 25);
+                    $rains[]      = (float) ($item['pop'] ?? 0) * 100;
+                    $winds[]      = round((float) ($item['wind']['speed'] ?? 0) * 3.6, 1);
+                    $humidities[] = (int) ($item['main']['humidity'] ?? 50);
+                }
+
+                $avgTemp      = array_sum($temps) / count($temps);
+                $maxRain      = max($rains);
+                $maxWind      = max($winds);
+                $avgHumidity  = array_sum($humidities) / count($humidities);
+
+                // Score calculation (0-100, lower is better)
+                $score = 0;
+                $score += $this->scoreRain($maxRain);
+                $score += $this->scoreWind($maxWind);
+                $score += $this->scoreTemperature($avgTemp);
+                $score += $this->scoreHumidity($avgHumidity);
+                $score = min(100, $score);
+
+                $results[] = [
+                    'date'            => $date,
+                    'weekday'         => $dateObj->locale('pt_BR')->dayName,
+                    'score'           => $score,
+                    'status'          => $score <= 20 ? 'IDEAL' : ($score <= 50 ? 'FAVORABLE' : ($score <= 70 ? 'CAUTION' : 'AVOID')),
+                    'avg_temperature' => round($avgTemp, 1),
+                    'max_rain'        => round($maxRain),
+                    'max_wind'        => $maxWind,
+                    'avg_humidity'    => round($avgHumidity),
+                    'conditions'      => $this->summarizeConditions($items),
+                ];
+            }
+
+            usort($results, fn ($a, $b) => $a['score'] <=> $b['score']);
+
+            return $this->success([
+                'city'      => $city,
+                'country'   => $country,
+                'city_name' => $city,
+                'dates'     => $results,
+                'best_date' => $results[0] ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+    }
+
+    private function scoreRain(float $maxRain): int
+    {
+        if ($maxRain >= 80) return 40;
+        if ($maxRain >= 60) return 30;
+        if ($maxRain >= 40) return 20;
+        if ($maxRain >= 20) return 10;
+        return 0;
+    }
+
+    private function scoreWind(float $maxWind): int
+    {
+        if ($maxWind > 60) return 30;
+        if ($maxWind > 35) return 25;
+        if ($maxWind > 20) return 15;
+        if ($maxWind > 12) return 8;
+        return 0;
+    }
+
+    private function scoreTemperature(float $avgTemp): int
+    {
+        if ($avgTemp > 38 || $avgTemp < 5) return 35;
+        if ($avgTemp > 32 || $avgTemp < 10) return 25;
+        if ($avgTemp > 28 || $avgTemp < 15) return 15;
+        if ($avgTemp > 25) return 5;
+        return 0;
+    }
+
+    private function scoreHumidity(float $avgHumidity): int
+    {
+        if ($avgHumidity > 90) return 15;
+        if ($avgHumidity > 80) return 10;
+        if ($avgHumidity > 70) return 5;
+        return 0;
+    }
+
+    private function summarizeConditions(array $items): string
+    {
+        $conditions = [];
+        foreach ($items as $item) {
+            $main = $item['weather'][0]['main'] ?? '';
+            if ($main) {
+                $conditions[$main] = ($conditions[$main] ?? 0) + 1;
+            }
+        }
+        arsort($conditions);
+        $dominant = array_key_first($conditions);
+        $translations = [
+            'Clear' => 'predominantemente limpo',
+            'Clouds' => 'nublado',
+            'Rain' => 'chuvoso',
+            'Drizzle' => 'garoa',
+            'Thunderstorm' => 'tempestade',
+            'Snow' => 'neve',
+            'Mist' => 'névoa',
+            'Fog' => 'nevoeiro',
+            'Haze' => 'neblina',
+        ];
+        return $translations[$dominant] ?? $dominant ?? 'variado';
+    }
+
     public function airQuality(Request $request): JsonResponse
     {
         $request->validate(['city' => 'required|string']);

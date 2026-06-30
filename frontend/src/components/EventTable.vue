@@ -25,7 +25,7 @@
         <template v-for="event in events" :key="event.id">
           <tr>
             <td>
-              <span class="font-medium">{{ event.name }}</span>
+              <RouterLink :to="`/events/${event.id}`" class="event-name-link">{{ event.name }}</RouterLink>
             </td>
             <td class="td-muted">{{ event.city }}, {{ event.country }}</td>
             <td class="td-muted">{{ formatDate(event.event_date) }}</td>
@@ -235,6 +235,9 @@ function statusClass(status) {
   color: var(--color-primary);
   border-color: var(--color-primary);
 }
+
+.event-name-link { color: var(--color-primary); text-decoration: none; font-weight: 600; }
+.event-name-link:hover { text-decoration: underline; }
 
 .btn-refresh:disabled { opacity: 0.4; cursor: default; }
 

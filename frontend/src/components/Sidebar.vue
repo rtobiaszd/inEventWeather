@@ -26,6 +26,7 @@
           <RouterLink to="/dashboard" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Dashboard
+            <span v-if="hasAlerts" class="sidebar-alert-badge">{{ totalAlerts }}</span>
           </RouterLink>
         </li>
         <li v-if="can('weather')">
@@ -44,6 +45,12 @@
           <RouterLink to="/events/agenda" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="14" x2="21" y2="14"/></svg>
             Agenda
+          </RouterLink>
+        </li>
+        <li v-if="can('events')">
+          <RouterLink to="/events/best-dates" @click="emit('close')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Melhor Data
           </RouterLink>
         </li>
         <li v-if="can('events')">
@@ -103,9 +110,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { useSmartAlerts } from '../composables/useSmartAlerts.js'
 
 defineProps({
   isOpen: {
@@ -118,6 +126,11 @@ const emit = defineEmits(['close'])
 
 const router               = useRouter()
 const { user, logout, isAdmin, can } = useAuth()
+const { hasAlerts, totalAlerts, loadAlerts } = useSmartAlerts()
+
+onMounted(() => {
+  if (can('events')) loadAlerts()
+})
 
 const userInitial = computed(() => {
   const name = user.value?.name || user.value?.username || '?'
@@ -210,6 +223,19 @@ async function handleLogout() {
 .sidebar-logout-btn:hover {
   color: #EF4444;
   background: rgba(239,68,68,.12);
+}
+
+.sidebar-alert-badge {
+  margin-left: auto;
+  background: #EF4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  line-height: 1.4;
+  min-width: 18px;
+  text-align: center;
 }
 
 @media (max-width: 1024px) {

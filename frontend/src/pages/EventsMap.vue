@@ -47,6 +47,7 @@
         <span v-if="selectedEvent.budget">💰 Orçamento: {{ formatBRL(selectedEvent.budget) }}</span>
       </div>
       <div class="events-map-popup-actions">
+        <RouterLink :to="`/events/${selectedEvent.id}`" class="btn btn-sm btn-ghost">Detalhes</RouterLink>
         <RouterLink :to="`/events/${selectedEvent.id}/edit`" class="btn btn-sm btn-ghost">Editar</RouterLink>
       </div>
     </div>

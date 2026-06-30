@@ -27,7 +27,12 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/weather/forecast',    [WeatherController::class, 'forecast']);
     Route::get('/weather/air-quality', [WeatherController::class, 'airQuality']);
 
+    Route::get('/events/upcoming-weather', [EventController::class, 'upcomingWeather']);
+    Route::get('/events/risk-alerts', [EventController::class, 'riskAlerts']);
+    Route::get('/events/financial-insights', [EventController::class, 'financialInsights']);
     Route::apiResource('events', EventController::class);
+
+    Route::get('/weather/best-dates', [WeatherController::class, 'bestDates']);
 
     Route::get('/history', [HistoryController::class, 'index']);
 

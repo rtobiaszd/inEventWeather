@@ -36,6 +36,12 @@ const routes = [
     meta: { title: 'Novo Evento', module: 'events', action: 'create' },
   },
   {
+    path: '/events/:id',
+    name: 'events.detail',
+    component: () => import('../pages/EventDetail.vue'),
+    meta: { title: 'Evento', module: 'events' },
+  },
+  {
     path: '/events/:id/edit',
     name: 'events.edit',
     component: () => import('../pages/EventEdit.vue'),
@@ -46,6 +52,12 @@ const routes = [
     name: 'events.map',
     component: () => import('../pages/EventsMap.vue'),
     meta: { title: 'Mapa de Eventos', module: 'events' },
+  },
+  {
+    path: '/events/best-dates',
+    name: 'events.best-dates',
+    component: () => import('../pages/BestDates.vue'),
+    meta: { title: 'Melhor Data', module: 'events' },
   },
   {
     path: '/events/agenda',

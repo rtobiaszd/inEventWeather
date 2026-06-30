@@ -43,6 +43,7 @@ export const weatherApi = {
   search:     (city, country = 'BR', opts = {}) => http.get('/weather/search',      { params: { city, country }, signal: opts.signal }),
   forecast:   (city, country = 'BR') => http.get('/weather/forecast',    { params: { city, country } }),
   airQuality: (city, country = 'BR') => http.get('/weather/air-quality', { params: { city, country } }),
+  bestDates:  (city, country = 'BR') => http.get('/weather/best-dates',  { params: { city, country } }),
 }
 
 export const eventsApi = {
@@ -51,6 +52,9 @@ export const eventsApi = {
   create: (data)     => http.post('/events', data),
   update: (id, data) => http.put(`/events/${id}`, data),
   remove: (id)       => http.delete(`/events/${id}`),
+  upcomingWeather: () => http.get('/events/upcoming-weather'),
+  riskAlerts:         () => http.get('/events/risk-alerts'),
+  financialInsights:  () => http.get('/events/financial-insights'),
 }
 
 export const historyApi = {

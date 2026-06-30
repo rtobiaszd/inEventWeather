@@ -56,16 +56,16 @@
           <div class="metric-card-label">❌ Cancelados</div>
           <div class="metric-card-value metric-value-danger">{{ animateNum(stats.cancelled) }}</div>
         </div>
-        <div class="metric-card metric-card-cta">
+        <RouterLink to="/events" class="metric-card metric-card-cta">
           <div class="metric-card-label">💰 Receita Total</div>
           <div class="metric-card-value metric-value-finance">{{ formatBRL(stats.revenue) }}</div>
-          <div class="metric-card-cta-hint">Exportar relatório →</div>
-        </div>
-        <div class="metric-card metric-card-cta">
+          <div class="metric-card-cta-hint">Ver todos os eventos →</div>
+        </RouterLink>
+        <RouterLink to="/events" class="metric-card metric-card-cta">
           <div class="metric-card-label">🎫 Ticket Médio</div>
           <div class="metric-card-value metric-value-finance">{{ formatBRL(stats.avgTicket) }}</div>
-          <div class="metric-card-cta-hint">Ver detalhes →</div>
-        </div>
+          <div class="metric-card-cta-hint">Ver todos os eventos →</div>
+        </RouterLink>
       </template>
     </div>
 
@@ -88,6 +88,109 @@
     </div>
 
     <template v-if="dashboardEvents.length > 0">
+      <!-- Smart Risk Alerts -->
+      <SmartAlerts
+        :alerts="riskAlerts"
+        :loading="alertsLoading"
+        :high-risk-count="highRiskCount"
+        :medium-risk-count="mediumRiskCount"
+        :has-alerts="hasAlerts"
+        @refresh="loadAlerts"
+      />
+
+      <!-- Financial Intelligence Panel -->
+      <div v-if="finHasData" class="card financial-panel">
+        <div class="card-header">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Inteligência Financeira
+          </h3>
+          <button class="btn btn-ghost btn-sm" :disabled="finLoading" @click="loadFinancialInsights">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Atualizar
+          </button>
+        </div>
+        <div class="fin-grid">
+          <div class="fin-card fin-card-total">
+            <div class="fin-card-label">Eventos</div>
+            <div class="fin-card-value">{{ finSummary?.total_events || 0 }}</div>
+          </div>
+          <div class="fin-card">
+            <div class="fin-card-label">Orçamento Total</div>
+            <div class="fin-card-value fin-value-blue">{{ totalBudgetFormatted }}</div>
+          </div>
+          <div class="fin-card">
+            <div class="fin-card-label">Receita Total</div>
+            <div class="fin-card-value fin-value-green">{{ totalRevenueFormatted }}</div>
+          </div>
+          <div class="fin-card" :class="finSummary?.total_profit >= 0 ? 'fin-card-positive' : 'fin-card-negative'">
+            <div class="fin-card-label">Lucro / Prejuízo</div>
+            <div class="fin-card-value">{{ totalProfitFormatted }}</div>
+          </div>
+          <div class="fin-card">
+            <div class="fin-card-label">ROI Médio</div>
+            <div class="fin-card-value" :style="{ color: (finSummary?.avg_roi || 0) >= 0 ? '#16a34a' : '#ef4444' }">
+              {{ finSummary?.avg_roi || 0 }}%
+            </div>
+          </div>
+          <div class="fin-card fin-card-warning">
+            <div class="fin-card-label">Capital em Risco</div>
+            <div class="fin-card-value">{{ capitalAtRiskFormatted }}</div>
+            <div class="fin-card-sub" v-if="finSummary?.high_risk_financial > 0">
+              {{ finSummary.high_risk_financial }} evento(s) em risco alto
+            </div>
+          </div>
+          <div class="fin-card">
+            <div class="fin-card-label">Eventos Rentáveis</div>
+            <div class="fin-card-value fin-value-green">
+              {{ finSummary?.profitable_count || 0 }}/{{ finSummary?.total_events || 0 }}
+            </div>
+          </div>
+          <div class="fin-card">
+            <div class="fin-card-label">Alto Risco</div>
+            <div class="fin-card-value" style="color:#ef4444">{{ finSummary?.high_risk_count || 0 }}</div>
+          </div>
+        </div>
+
+        <!-- Mini bar chart: Budget at risk -->
+        <div v-if="distribution" class="fin-risk-chart">
+          <div class="fin-risk-row">
+            <span class="fin-risk-label">Baixo Risco</span>
+            <div class="fin-risk-bar-wrap">
+              <div
+                class="fin-risk-bar fin-risk-bar-low"
+                :style="{ width: riskBudgetPct('LOW_RISK') + '%' }"
+              ></div>
+            </div>
+            <span class="fin-risk-value">{{ riskBudgetPct('LOW_RISK') }}%</span>
+          </div>
+          <div class="fin-risk-row">
+            <span class="fin-risk-label">Médio Risco</span>
+            <div class="fin-risk-bar-wrap">
+              <div
+                class="fin-risk-bar fin-risk-bar-medium"
+                :style="{ width: riskBudgetPct('MEDIUM_RISK') + '%' }"
+              ></div>
+            </div>
+            <span class="fin-risk-value">{{ riskBudgetPct('MEDIUM_RISK') }}%</span>
+          </div>
+          <div class="fin-risk-row">
+            <span class="fin-risk-label">Alto Risco</span>
+            <div class="fin-risk-bar-wrap">
+              <div
+                class="fin-risk-bar fin-risk-bar-high"
+                :style="{ width: riskBudgetPct('HIGH_RISK') + '%' }"
+              ></div>
+            </div>
+            <span class="fin-risk-value">{{ riskBudgetPct('HIGH_RISK') }}%</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Main grid: Weather + Risk -->
       <div class="grid-2">
         <div class="stack-sm">
@@ -246,20 +349,34 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { weatherApi, eventsApi, favoritesApi } from '../services/api.js'
 import { useAuth } from '../composables/useAuth.js'
 import { useEventStats } from '../composables/useEventStats.js'
 import { useToast } from '../composables/useToast.js'
+import { useSmartAlerts } from '../composables/useSmartAlerts.js'
+import { useFinancialInsights } from '../composables/useFinancialInsights.js'
 import WeatherCard   from '../components/WeatherCard.vue'
 import ForecastCard  from '../components/ForecastCard.vue'
 import RiskBadge     from '../components/RiskBadge.vue'
 import EventTable    from '../components/EventTable.vue'
+import SmartAlerts   from '../components/SmartAlerts.vue'
 import LoadingState  from '../components/LoadingState.vue'
 import ErrorMessage  from '../components/ErrorMessage.vue'
 
 const { can } = useAuth()
 const { toasts, show: showToast, dismiss } = useToast()
+const { alerts: riskAlerts, loading: alertsLoading, meta: alertsMeta, hasAlerts, highRiskCount, mediumRiskCount, loadAlerts } = useSmartAlerts()
+const {
+  summary: finSummary,
+  loading: finLoading,
+  hasData: finHasData,
+  capitalAtRiskFormatted,
+  totalProfitFormatted,
+  totalBudgetFormatted,
+  totalRevenueFormatted,
+  loadInsights: loadFinancialInsights,
+} = useFinancialInsights()
 
 const cityQuery = ref('São Paulo')
 const searchedCity = ref('São Paulo')
@@ -302,18 +419,18 @@ const riskColor = computed(() => {
   return '#22C55E'
 })
 
-const animatedValues = ref({})
+const animatedValues = reactive({})
 
 function animateNum(target) {
   const key = `v_${target}`
-  if (!animatedValues.value[key]) {
-    animatedValues.value[key] = ref(0)
-    animateValue(animatedValues.value[key], target)
+  if (animatedValues[key] === undefined) {
+    animatedValues[key] = 0
+    animateValue(key, target)
   }
-  return animatedValues.value[key]
+  return animatedValues[key]
 }
 
-function animateValue(refVal, target) {
+function animateValue(key, target) {
   const start = performance.now()
   const duration = 600
   const from = 0
@@ -322,7 +439,7 @@ function animateValue(refVal, target) {
     const elapsed = now - start
     const progress = Math.min(elapsed / duration, 1)
     const eased = 1 - Math.pow(1 - progress, 3)
-    refVal.value = Math.round(from + (target - from) * eased)
+    animatedValues[key] = Math.round(from + (target - from) * eased)
     if (progress < 1) requestAnimationFrame(tick)
   }
 
@@ -331,6 +448,13 @@ function animateValue(refVal, target) {
 
 function formatBRL(n) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0)
+}
+
+function riskBudgetPct(level) {
+  if (!distribution.value?.budget_at_risk || !finSummary.value?.total_budget) return 0
+  const total = finSummary.value.total_budget
+  const val = distribution.value.budget_at_risk[level] || 0
+  return total > 0 ? Math.round((val / total) * 100) : 0
 }
 
 function alertIcon(type) {
@@ -406,6 +530,8 @@ async function loadEvents() {
 onMounted(() => {
   searchWeather()
   loadEvents()
+  if (can('events')) loadAlerts()
+  if (can('events')) loadFinancialInsights()
 })
 
 onBeforeUnmount(() => {
@@ -678,6 +804,117 @@ onBeforeUnmount(() => {
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* Financial Intelligence Panel */
+.financial-panel {
+  border-left: 3px solid #059669;
+}
+
+.fin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.fin-card {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.fin-card-total .fin-card-value {
+  color: var(--color-primary);
+  font-size: 22px;
+}
+
+.fin-card-positive {
+  border-color: #BBF7D0;
+  background: #F0FDF4;
+}
+
+.fin-card-negative {
+  border-color: #FECACA;
+  background: #FEF2F2;
+}
+
+.fin-card-warning {
+  border-color: #FDE68A;
+  background: #FFFBEB;
+}
+
+.fin-card-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.fin-card-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.fin-card-sub {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.fin-value-green { color: #16a34a; }
+.fin-value-blue  { color: #2563eb; }
+
+.fin-risk-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.fin-risk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fin-risk-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  min-width: 80px;
+  text-align: right;
+}
+
+.fin-risk-bar-wrap {
+  flex: 1;
+  height: 10px;
+  background: var(--color-border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.fin-risk-bar {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.6s ease;
+}
+
+.fin-risk-bar-low    { background: #22C55E; }
+.fin-risk-bar-medium { background: #F59E0B; }
+.fin-risk-bar-high   { background: #EF4444; }
+
+.fin-risk-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
 @media (max-width: 600px) {
   .overview-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -690,6 +927,10 @@ onBeforeUnmount(() => {
   .status-grid {
     grid-template-columns: 1fr;
     justify-items: center;
+  }
+
+  .fin-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

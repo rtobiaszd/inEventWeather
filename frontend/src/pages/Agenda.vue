@@ -65,7 +65,7 @@
         </div>
 
         <div v-else class="agenda-event-list">
-          <div v-for="event in dayEvents" :key="event.id" class="agenda-event-item" @click="goEdit(event)">
+          <div v-for="event in dayEvents" :key="event.id" class="agenda-event-item" @click="goDetail(event)">
             <div class="agenda-event-time">
               {{ event.event_time ? event.event_time.slice(0, 5) : '—' }}
             </div>
@@ -194,8 +194,8 @@ function formatBRL(n) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0)
 }
 
-function goEdit(event) {
-  router.push({ name: 'events.edit', params: { id: event.id } })
+function goDetail(event) {
+  router.push({ name: 'events.detail', params: { id: event.id } })
 }
 
 async function load() {

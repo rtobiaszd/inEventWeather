@@ -15,7 +15,7 @@
     <ErrorMessage v-else-if="loadError" :message="loadError" :retry="false" />
 
     <div v-else class="card">
-      <form @submit.prevent="submit" class="form-section">
+      <form @submit.prevent="submit" class="form-section" novalidate>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Nome do Evento <span class="required">*</span></label>
@@ -66,6 +66,8 @@
             </select>
           </div>
         </div>
+
+        <SmartDatePicker v-model="form.event_date" :city="form.city" :country="form.country" :type="form.type" />
 
         <div class="form-group">
           <label class="form-label">Descrição</label>
@@ -169,6 +171,14 @@
           </div>
         </details>
 
+        <WeatherPreview
+          :city="form.city"
+          :country="form.country"
+          :event-date="form.event_date"
+          :event-time="form.event_time"
+          :is-outdoor="form.type === 'outdoor'"
+        />
+
         <div v-if="errorMsg" class="alert alert-danger">{{ errorMsg }}</div>
 
         <div class="flex-gap">
@@ -186,6 +196,8 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { eventsApi, eventTypesApi } from '../services/api.js'
+import WeatherPreview from '../components/WeatherPreview.vue'
+import SmartDatePicker from '../components/SmartDatePicker.vue'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorMessage from '../components/ErrorMessage.vue'
 
