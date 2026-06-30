@@ -206,6 +206,9 @@ docker exec -it event-weather-php php artisan migrate
 # Rodar seeders manualmente
 docker exec -it event-weather-php php artisan db:seed
 
+# Rodar testes automatizados do backend
+docker exec -it event-weather-php vendor/bin/phpunit --configuration /var/www/html/phpunit.xml
+
 # Gerar nova APP_KEY
 docker exec -it event-weather-php php artisan key:generate
 
