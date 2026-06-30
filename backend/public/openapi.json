@@ -1,0 +1,378 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "inEvent — Event Weather Dashboard API",
+    "description": "API REST para gerenciamento de eventos com análise climática integrada via OpenWeather. Autenticação via Laravel Sanctum (Bearer token).",
+    "version": "2.0.0",
+    "contact": { "email": "dev@inevent.local" }
+  },
+  "servers": [
+    { "url": "http://localhost:8080/api", "description": "Desenvolvimento local (Docker)" }
+  ],
+  "tags": [
+    { "name": "Auth",      "description": "Autenticação e cadastro de usuários" },
+    { "name": "Events",    "description": "CRUD de eventos com enriquecimento climático" },
+    { "name": "Weather",   "description": "Consultas meteorológicas em tempo real" },
+    { "name": "Favorites", "description": "Cidades favoritas do usuário" },
+    { "name": "History",   "description": "Histórico de consultas climáticas" },
+    { "name": "Health",    "description": "Status da API" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token obtido via POST /auth/login"
+      }
+    },
+    "schemas": {
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data":    { "type": "object" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error":   { "type": "string",  "example": "Mensagem de erro" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id":         { "type": "integer", "example": 1 },
+          "name":       { "type": "string",  "example": "Administrador" },
+          "username":   { "type": "string",  "example": "admin" },
+          "created_at": { "type": "string",  "format": "date-time" }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id":                { "type": "integer", "example": 1 },
+          "name":              { "type": "string",  "example": "Festival de Música de Verão" },
+          "city":              { "type": "string",  "example": "São Paulo" },
+          "country":           { "type": "string",  "example": "BR" },
+          "event_date":        { "type": "string",  "format": "date",    "example": "2026-08-15" },
+          "event_time":        { "type": "string",  "example": "18:00:00" },
+          "type":              { "type": "string",  "enum": ["indoor","outdoor"] },
+          "expected_audience": { "type": "integer", "example": 5000 },
+          "description":       { "type": "string",  "nullable": true }
+        }
+      },
+      "EventDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Event" },
+          {
+            "type": "object",
+            "properties": {
+              "weather": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "temperature":         { "type": "number", "example": 24.5 },
+                  "weather_main":        { "type": "string", "example": "Clouds" },
+                  "weather_description": { "type": "string", "example": "nublado" },
+                  "icon":                { "type": "string", "example": "04d" }
+                }
+              },
+              "event_forecast": {
+                "type": "object",
+                "nullable": true,
+                "description": "Previsão para o dia/hora do evento. `type=forecast` se dentro de 5 dias, `type=estimate` (média) se além.",
+                "properties": {
+                  "available":           { "type": "boolean" },
+                  "type":                { "type": "string", "enum": ["forecast","estimate"] },
+                  "note":                { "type": "string" },
+                  "temperature":         { "type": "number", "example": 27.3 },
+                  "feels_like":          { "type": "number", "example": 29.1 },
+                  "humidity":            { "type": "integer","example": 65 },
+                  "wind_speed":          { "type": "number", "example": 4.2 },
+                  "rain_probability":    { "type": "integer","example": 20 },
+                  "weather_main":        { "type": "string", "example": "Clear" },
+                  "weather_description": { "type": "string", "example": "céu limpo" },
+                  "icon":                { "type": "string", "example": "01d" },
+                  "forecast_time":       { "type": "string", "nullable": true, "example": "2026-08-15 18:00:00" }
+                }
+              },
+              "risk": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "score":          { "type": "integer", "example": 15 },
+                  "status":         { "type": "string",  "enum": ["LOW_RISK","MEDIUM_RISK","HIGH_RISK"] },
+                  "recommendation": { "type": "string" },
+                  "alerts":         { "type": "array", "items": { "type": "object" } },
+                  "summary":        { "type": "object" }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Status da API",
+        "responses": {
+          "200": { "description": "API operacional", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login do usuário",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username","password"],
+                "properties": {
+                  "username": { "type": "string", "example": "admin" },
+                  "password": { "type": "string", "example": "admin123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login bem-sucedido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string" },
+                        "user":  { "$ref": "#/components/schemas/User" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Credenciais inválidas", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Cadastro de novo usuário",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name","username","password","password_confirmation"],
+                "properties": {
+                  "name":                  { "type": "string",  "example": "João Silva" },
+                  "username":              { "type": "string",  "example": "joao.silva" },
+                  "password":              { "type": "string",  "example": "senha123" },
+                  "password_confirmation": { "type": "string",  "example": "senha123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Usuário criado" },
+          "422": { "description": "Dados inválidos" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout (invalida o token atual)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Logout realizado" },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Dados do usuário autenticado",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Dados do usuário", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/User" } } } } } }
+        }
+      }
+    },
+    "/events": {
+      "get": {
+        "tags": ["Events"],
+        "summary": "Lista todos os eventos ordenados por data",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Lista de eventos", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "array", "items": { "$ref": "#/components/schemas/Event" } } } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Events"],
+        "summary": "Cria um novo evento",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name","city","country","event_date","event_time","type"],
+                "properties": {
+                  "name":              { "type": "string",  "example": "Hackathon 2026" },
+                  "city":              { "type": "string",  "example": "Campinas" },
+                  "country":           { "type": "string",  "example": "BR" },
+                  "event_date":        { "type": "string",  "format": "date", "example": "2026-10-10" },
+                  "event_time":        { "type": "string",  "example": "09:00" },
+                  "type":              { "type": "string",  "enum": ["indoor","outdoor"] },
+                  "expected_audience": { "type": "integer", "example": 300, "nullable": true },
+                  "description":       { "type": "string",  "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Evento criado" },
+          "422": { "description": "Dados inválidos" }
+        }
+      }
+    },
+    "/events/{id}": {
+      "get": {
+        "tags": ["Events"],
+        "summary": "Detalhes do evento com clima atual, previsão para o dia e análise de risco",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Evento com dados climáticos", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/EventDetail" } } } } } },
+          "404": { "description": "Evento não encontrado" }
+        }
+      },
+      "put": {
+        "tags": ["Events"],
+        "summary": "Atualiza um evento",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Event" } } } },
+        "responses": {
+          "200": { "description": "Evento atualizado" },
+          "404": { "description": "Não encontrado" }
+        }
+      },
+      "delete": {
+        "tags": ["Events"],
+        "summary": "Remove um evento",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Evento removido" },
+          "404": { "description": "Não encontrado" }
+        }
+      }
+    },
+    "/weather/search": {
+      "get": {
+        "tags": ["Weather"],
+        "summary": "Clima atual de uma cidade (salva no histórico)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "city",    "in": "query", "required": true,  "schema": { "type": "string" }, "example": "São Paulo" },
+          { "name": "country", "in": "query", "required": false, "schema": { "type": "string" }, "example": "BR" }
+        ],
+        "responses": { "200": { "description": "Dados climáticos atuais" } }
+      }
+    },
+    "/weather/forecast": {
+      "get": {
+        "tags": ["Weather"],
+        "summary": "Previsão 5 dias / 3 horas",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "city",    "in": "query", "required": true,  "schema": { "type": "string" } },
+          { "name": "country", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Previsão estendida" } }
+      }
+    },
+    "/weather/air-quality": {
+      "get": {
+        "tags": ["Weather"],
+        "summary": "Índice de qualidade do ar",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "city",    "in": "query", "required": true,  "schema": { "type": "string" } },
+          { "name": "country", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "AQI e componentes" } }
+      }
+    },
+    "/history": {
+      "get": {
+        "tags": ["History"],
+        "summary": "Histórico de consultas climáticas do usuário",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }],
+        "responses": { "200": { "description": "Registros do histórico" } }
+      }
+    },
+    "/favorites": {
+      "get": {
+        "tags": ["Favorites"],
+        "summary": "Lista cidades favoritas",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Lista de favoritos" } }
+      },
+      "post": {
+        "tags": ["Favorites"],
+        "summary": "Adiciona cidade aos favoritos",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["city","country"],
+                "properties": {
+                  "city":    { "type": "string", "example": "Curitiba" },
+                  "country": { "type": "string", "example": "BR" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Favorito adicionado" }, "409": { "description": "Já favoritado" } }
+      }
+    },
+    "/favorites/{id}": {
+      "delete": {
+        "tags": ["Favorites"],
+        "summary": "Remove cidade dos favoritos",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Favorito removido" }, "404": { "description": "Não encontrado" } }
+      }
+    }
+  }
+}
