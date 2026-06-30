@@ -5,11 +5,13 @@ RUN apk add --no-cache \
     libxml2-dev \
     oniguruma-dev \
     libzip-dev \
+    libpq-dev \
     zip \
     unzip \
     && docker-php-ext-install \
         pdo \
         pdo_mysql \
+        pdo_pgsql \
         mbstring \
         xml \
         zip \

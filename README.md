@@ -8,12 +8,12 @@ Sistema para gerenciamento de eventos com análise climática em tempo real. Ao 
 |-----------|-------------------------------------|
 | Backend   | **Laravel 11** (PHP 8.2), Sanctum   |
 | ORM       | Eloquent + migrations               |
-| Banco     | MySQL 8.0                           |
+| Banco     | **MySQL 8.0** ou **PostgreSQL 16** (selecionável via `.env`) |
 | Cache     | **Redis 7** (TTL: geo 24h, atual 10min, previsão 30min) |
 | Frontend  | **Vue 3** + Vite + Tailwind CSS     |
 | Auth      | Bearer token (24h), `personal_access_tokens` |
 | Clima     | OpenWeather API (Current, Forecast, Air Pollution) |
-| Container | Docker Compose (5 serviços)         |
+| Container | Docker Compose (6 serviços)         |
 
 ## Pré-requisitos
 

@@ -1,9 +1,16 @@
 <?php
 
 return [
-    'default' => 'mysql',
+    /*
+     * DB_CONNECTION=mysql  → usa MySQL  (padrão)
+     * DB_CONNECTION=pgsql  → usa PostgreSQL
+     * Todas as credenciais (host, port, database, user, password) vêm das
+     * mesmas variáveis de ambiente em ambos os drivers.
+     */
+    'default' => env('DB_CONNECTION', 'mysql'),
 
     'connections' => [
+
         'mysql' => [
             'driver'    => 'mysql',
             'host'      => env('DB_HOST', 'mysql'),
@@ -18,6 +25,21 @@ return [
             'engine'    => null,
             'options'   => [],
         ],
+
+        'pgsql' => [
+            'driver'   => 'pgsql',
+            'host'     => env('DB_HOST', 'postgres'),
+            'port'     => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'event_weather'),
+            'username' => env('DB_USERNAME', 'weather_user'),
+            'password' => env('DB_PASSWORD', 'weather_pass'),
+            'charset'  => 'utf8',
+            'prefix'   => '',
+            'schema'   => 'public',
+            'sslmode'  => 'prefer',
+            'options'  => [],
+        ],
+
     ],
 
     'migrations' => [
