@@ -30,6 +30,7 @@ cd inEvent
 # 2. Configure as variáveis de ambiente
 cp .env.example .env
 # Edite .env e preencha OPENWEATHER_API_KEY
+# Para trocar entre MySQL e PostgreSQL, altere apenas DB_CONNECTION
 
 # 3. Suba os containers (build + migrate + seed automáticos)
 docker compose up -d --build
@@ -51,6 +52,7 @@ docker compose up -d --build
 
 ```env
 OPENWEATHER_API_KEY=sua_chave_aqui
+DB_CONNECTION=mysql
 DB_ROOT_PASSWORD=rootpassword
 DB_NAME=event_weather
 DB_USER=weather_user
@@ -59,6 +61,7 @@ APP_ENV=development
 ```
 
 > A chave da OpenWeather fica **exclusivamente no container PHP** — o frontend nunca a acessa diretamente.
+> `DB_CONNECTION=mysql` usa o MySQL do `docker-compose.yml`; `DB_CONNECTION=pgsql` usa o PostgreSQL.
 
 ## Arquitetura
 
@@ -85,7 +88,7 @@ inEvent/
 ├── database/
 │   └── database.sql       # Bootstrap do banco (charset/collation)
 ├── docker/
-│   └── entrypoint.sh      # wait-for-mysql → migrate → seed → php-fpm
+│   └── entrypoint.sh      # wait-for-db → migrate → seed → php-fpm
 ├── nginx/nginx.conf
 └── docker-compose.yml
 ```
@@ -228,6 +231,7 @@ Resultado: latência cai de ~4600ms (cold) para ~10ms (warm).
 | Container               | Porta | Descrição             |
 |-------------------------|-------|-----------------------|
 | `event-weather-mysql`   | 3306  | MySQL 8.0             |
+| `event-weather-postgres`| 5432  | PostgreSQL 16         |
 | `event-weather-redis`   | —     | Redis 7 (cache)       |
 | `event-weather-php`     | —     | Laravel + php-fpm     |
 | `event-weather-nginx`   | 8080  | Proxy reverso         |
