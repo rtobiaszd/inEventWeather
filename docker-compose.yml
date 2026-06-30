@@ -1,16 +1,28 @@
 version: '3.8'
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Banco de dados: selecione via .env (DB_CONNECTION + DB_HOST + DB_PORT)
+#
+#   MySQL    →  DB_CONNECTION=mysql   DB_HOST=mysql     DB_PORT=3306
+#   Postgres →  DB_CONNECTION=pgsql   DB_HOST=postgres  DB_PORT=5432
+#
+# Ambos os serviços sobem por padrão.
+# Para economizar recursos, comente o serviço que não for usar.
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
+
+  # ── MySQL ────────────────────────────────────────────────────────────────
   mysql:
     image: mysql:8.0
     container_name: event-weather-mysql
     restart: unless-stopped
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect='SET NAMES utf8mb4'
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_NAME:-event_weather}
-      MYSQL_USER: ${DB_USER:-weather_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-weather_pass}
+      MYSQL_DATABASE:      ${DB_NAME:-event_weather}
+      MYSQL_USER:          ${DB_USER:-weather_user}
+      MYSQL_PASSWORD:      ${DB_PASSWORD:-weather_pass}
     ports:
       - "3306:3306"
     volumes:
@@ -18,12 +30,36 @@ services:
     networks:
       - event-weather-net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-uroot", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
 
+  # ── PostgreSQL ───────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: event-weather-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-event_weather}
+      POSTGRES_USER:     ${DB_USER:-weather_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-weather_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - event-weather-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Redis ────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: event-weather-redis
@@ -36,6 +72,7 @@ services:
       timeout: 3s
       retries: 5
 
+  # ── PHP-FPM (Laravel) ───────────────────────────────────────────────────
   php:
     build:
       context: .
@@ -43,30 +80,40 @@ services:
     container_name: event-weather-php
     restart: unless-stopped
     volumes:
-      # vendor/ fica no host filesystem — o entrypoint instala se ausente
       - ./backend:/var/www/html
     environment:
-      APP_KEY: base64:Q3VzdG9tS2V5Rm9yRXZlbnRXZWF0aGVyRGFzaGJvYXI=
-      APP_ENV: ${APP_ENV:-development}
+      APP_KEY:   base64:Q3VzdG9tS2V5Rm9yRXZlbnRXZWF0aGVyRGFzaGJvYXI=
+      APP_ENV:   ${APP_ENV:-development}
       APP_DEBUG: "true"
-      DB_HOST: mysql
-      DB_PORT: "3306"
+
+      # ── DB: altere estas 3 linhas no .env para trocar de banco ──────────
+      DB_CONNECTION: ${DB_CONNECTION:-mysql}
+      DB_HOST:       ${DB_HOST:-mysql}
+      DB_PORT:       ${DB_PORT:-3306}
+      # ────────────────────────────────────────────────────────────────────
+
       DB_DATABASE: ${DB_NAME:-event_weather}
       DB_USERNAME: ${DB_USER:-weather_user}
       DB_PASSWORD: ${DB_PASSWORD:-weather_pass}
+
       OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY}
-      CACHE_DRIVER: redis
-      REDIS_CLIENT: predis
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
+      CACHE_DRIVER:  redis
+      REDIS_CLIENT:  predis
+      REDIS_HOST:    redis
+      REDIS_PORT:    "6379"
     depends_on:
       mysql:
         condition: service_healthy
+        required: false
+      postgres:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
     networks:
       - event-weather-net
 
+  # ── Nginx ────────────────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine
     container_name: event-weather-nginx
@@ -81,6 +128,7 @@ services:
     networks:
       - event-weather-net
 
+  # ── Frontend (Vue 3 + Vite) ──────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -99,6 +147,8 @@ services:
 
 volumes:
   mysql_data:
+    driver: local
+  postgres_data:
     driver: local
 
 networks:

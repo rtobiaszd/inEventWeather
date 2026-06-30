@@ -16,11 +16,31 @@ fi
 # Registra service providers (equivale ao post-autoload-dump)
 php artisan package:discover --ansi 2>/dev/null || true
 
-echo "[entrypoint] Aguardando MySQL em ${DB_HOST}:${DB_PORT}..."
-until php -r "new PDO('mysql:host='.getenv('DB_HOST').';port='.getenv('DB_PORT').';dbname='.getenv('DB_DATABASE'),getenv('DB_USERNAME'),getenv('DB_PASSWORD'));" 2>/dev/null; do
-    sleep 2
-done
-echo "[entrypoint] MySQL disponível."
+# ── Aguarda o banco configurado em DB_CONNECTION ──────────────────────────
+DB_CONN="${DB_CONNECTION:-mysql}"
+DB_H="${DB_HOST:-mysql}"
+DB_P="${DB_PORT:-3306}"
+
+if [ "$DB_CONN" = "pgsql" ]; then
+    echo "[entrypoint] Aguardando PostgreSQL em ${DB_H}:${DB_P}..."
+    until php -r "
+        \$dsn = 'pgsql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT') . ';dbname=' . getenv('DB_DATABASE');
+        new PDO(\$dsn, getenv('DB_USERNAME'), getenv('DB_PASSWORD'));
+    " 2>/dev/null; do
+        sleep 2
+    done
+    echo "[entrypoint] PostgreSQL disponível."
+else
+    echo "[entrypoint] Aguardando MySQL em ${DB_H}:${DB_P}..."
+    until php -r "
+        \$dsn = 'mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT') . ';dbname=' . getenv('DB_DATABASE');
+        new PDO(\$dsn, getenv('DB_USERNAME'), getenv('DB_PASSWORD'));
+    " 2>/dev/null; do
+        sleep 2
+    done
+    echo "[entrypoint] MySQL disponível."
+fi
+# ─────────────────────────────────────────────────────────────────────────────
 
 echo "[entrypoint] Executando migrations..."
 php artisan migrate --force
