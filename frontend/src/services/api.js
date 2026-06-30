@@ -63,4 +63,20 @@ export const favoritesApi = {
   remove: (id)   => http.delete(`/favorites/${id}`),
 }
 
+export const usersApi = {
+  list:              ()         => http.get('/users'),
+  get:               (id)       => http.get(`/users/${id}`),
+  create:            (data)     => http.post('/users', data),
+  update:            (id, data) => http.put(`/users/${id}`, data),
+  updatePermissions: (id, perms)=> http.patch(`/users/${id}/permissions`, { permissions: perms }),
+  remove:            (id)       => http.delete(`/users/${id}`),
+}
+
+export const eventTypesApi = {
+  list:   ()         => http.get('/event-types'),
+  create: (data)     => http.post('/event-types', data),
+  update: (id, data) => http.put(`/event-types/${id}`, data),
+  remove: (id)       => http.delete(`/event-types/${id}`),
+}
+
 export default http

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\FavoriteCity;
 use App\Services\WeatherService;
 use App\Services\WeatherRiskService;
 use Illuminate\Http\JsonResponse;
@@ -23,12 +24,23 @@ class EventController extends Controller
             'country'           => 'required|string|max:10',
             'event_date'        => 'required|date_format:Y-m-d',
             'event_time'        => 'required',
-            'type'              => 'required|in:indoor,outdoor',
+            'type'              => 'required|string|max:50',
             'expected_audience' => 'nullable|integer|min:0',
             'description'       => 'nullable|string',
         ]);
 
-        return $this->success(Event::create($data), 201);
+        $event = Event::create($data);
+
+        // Auto-adiciona a cidade aos favoritos (silencioso se já existir)
+        try {
+            FavoriteCity::firstOrCreate(
+                ['city' => $data['city'], 'country' => strtoupper($data['country'])],
+            );
+        } catch (\Throwable) {
+            // Não crítico — não falha a criação do evento
+        }
+
+        return $this->success($event, 201);
     }
 
     public function show(int $id): JsonResponse
@@ -93,7 +105,7 @@ class EventController extends Controller
             'country'           => 'sometimes|string|max:10',
             'event_date'        => 'sometimes|date_format:Y-m-d',
             'event_time'        => 'sometimes',
-            'type'              => 'sometimes|in:indoor,outdoor',
+            'type'              => 'sometimes|string|max:50',
             'expected_audience' => 'nullable|integer|min:0',
             'description'       => 'nullable|string',
         ]);

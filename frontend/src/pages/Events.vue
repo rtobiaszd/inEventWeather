@@ -3,17 +3,29 @@
     <div class="page-header">
       <div>
         <h2>Eventos</h2>
-        <p>{{ events.length }} evento(s) cadastrado(s)</p>
+        <p>{{ filtered.length }} evento(s)</p>
       </div>
-      <RouterLink to="/events/create" class="btn btn-primary">
+      <RouterLink v-if="can('events', 'create')" to="/events/create" class="btn btn-primary">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Novo Evento
       </RouterLink>
     </div>
 
+    <!-- Filtro por tipo -->
+    <div v-if="eventTypes.length" class="filter-bar">
+      <button
+        v-for="t in typeFilters"
+        :key="t.slug"
+        :class="['btn', 'btn-sm', activeFilter === t.slug ? 'btn-primary' : 'btn-ghost']"
+        @click="activeFilter = t.slug"
+      >
+        {{ t.icon }} {{ t.name }}
+      </button>
+    </div>
+
     <LoadingState v-if="loading" message="Carregando eventos..." />
     <ErrorMessage v-else-if="error" :message="error" @retry="load" />
-    <EventTable v-else :events="events" @edit="goEdit" @delete="confirmDelete" />
+    <EventTable v-else :events="filtered" @edit="goEdit" @delete="confirmDelete" />
 
     <!-- Delete confirmation modal -->
     <div v-if="deleteTarget" class="modal-overlay" @click.self="deleteTarget = null">
@@ -32,26 +44,43 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { eventsApi } from '../services/api.js'
-import EventTable  from '../components/EventTable.vue'
+import { eventsApi, eventTypesApi } from '../services/api.js'
+import { useAuth } from '../composables/useAuth.js'
+import EventTable   from '../components/EventTable.vue'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorMessage from '../components/ErrorMessage.vue'
 
-const router  = useRouter()
-const events  = ref([])
-const loading = ref(false)
-const error   = ref(null)
+const router    = useRouter()
+const { can }   = useAuth()
+
+const events     = ref([])
+const eventTypes = ref([])
+const loading    = ref(false)
+const error      = ref(null)
+const activeFilter = ref('all')
+
 const deleteTarget = ref(null)
 const deleting     = ref(false)
+
+const typeFilters = computed(() => [
+  { slug: 'all', name: 'Todos', icon: '📋' },
+  ...eventTypes.value,
+])
+
+const filtered = computed(() => {
+  if (activeFilter.value === 'all') return events.value
+  return events.value.filter(e => e.type === activeFilter.value)
+})
 
 async function load() {
   loading.value = true
   error.value   = null
   try {
-    const res = await eventsApi.list()
-    events.value = res.data ?? []
+    const [evRes, typRes] = await Promise.all([eventsApi.list(), eventTypesApi.list()])
+    events.value     = evRes.data ?? []
+    eventTypes.value = typRes.data ?? []
   } catch (e) {
     error.value = e.message
   } finally {
@@ -84,6 +113,12 @@ onMounted(load)
 </script>
 
 <style scoped>
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

@@ -22,13 +22,17 @@ class AuthController extends Controller
             return $this->error('Usuário ou senha incorretos', 401);
         }
 
+        if (isset($user->is_active) && !$user->is_active) {
+            return $this->error('Usuário inativo. Contate o administrador.', 403);
+        }
+
         $user->tokens()->where('expires_at', '<', now())->delete();
 
         $token = $user->createToken('auth-token', ['*'], now()->addHours(24))->plainTextToken;
 
         return $this->success([
             'token' => $token,
-            'user'  => ['id' => $user->id, 'username' => $user->username, 'name' => $user->name],
+            'user'  => $this->userPayload($user),
         ]);
     }
 
@@ -44,13 +48,14 @@ class AuthController extends Controller
             'name'     => $request->name,
             'username' => $request->username,
             'password' => $request->password,
+            'role'     => 'viewer',
         ]);
 
         $token = $user->createToken('auth-token', ['*'], now()->addHours(24))->plainTextToken;
 
         return $this->success([
             'token' => $token,
-            'user'  => ['id' => $user->id, 'username' => $user->username, 'name' => $user->name],
+            'user'  => $this->userPayload($user),
         ], 201);
     }
 
@@ -62,12 +67,19 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
-        return $this->success([
-            'id'         => $user->id,
-            'username'   => $user->username,
-            'name'       => $user->name,
-            'created_at' => $user->created_at,
-        ]);
+        return $this->success($this->userPayload($request->user()));
+    }
+
+    private function userPayload(User $user): array
+    {
+        return [
+            'id'          => $user->id,
+            'username'    => $user->username,
+            'name'        => $user->name,
+            'role'        => $user->role ?? 'viewer',
+            'permissions' => $user->permissions,
+            'is_active'   => $user->is_active ?? true,
+            'created_at'  => $user->created_at,
+        ];
     }
 }

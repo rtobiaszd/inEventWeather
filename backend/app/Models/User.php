@@ -9,14 +9,15 @@ class User extends Authenticatable
 {
     use HasApiTokens;
 
-    // A tabela usa apenas created_at (sem updated_at)
-    public const UPDATED_AT = null;
-
-    protected $fillable = ['username', 'password', 'name'];
+    protected $fillable = ['username', 'password', 'name', 'role', 'permissions', 'is_active'];
     protected $hidden   = ['password'];
 
     protected function casts(): array
     {
-        return ['password' => 'hashed'];
+        return [
+            'password'    => 'hashed',
+            'permissions' => 'array',
+            'is_active'   => 'boolean',
+        ];
     }
 }

@@ -9,10 +9,11 @@ Sistema para gerenciamento de eventos com análise climática em tempo real. Ao 
 | Backend   | **Laravel 11** (PHP 8.2), Sanctum   |
 | ORM       | Eloquent + migrations               |
 | Banco     | MySQL 8.0                           |
+| Cache     | **Redis 7** (TTL: geo 24h, atual 10min, previsão 30min) |
 | Frontend  | **Vue 3** + Vite + Tailwind CSS     |
 | Auth      | Bearer token (24h), `personal_access_tokens` |
 | Clima     | OpenWeather API (Current, Forecast, Air Pollution) |
-| Container | Docker Compose (4 serviços)         |
+| Container | Docker Compose (5 serviços)         |
 
 ## Pré-requisitos
 
@@ -107,7 +108,37 @@ Documentação completa: **`http://localhost:8080/docs`**
 | GET    | `/api/weather/search`  | ✓    | Clima atual (salva no histórico)         |
 | GET    | `/api/weather/forecast`| ✓    | Previsão 5 dias / 3h                     |
 | GET    | `/api/history`         | ✓    | Histórico de consultas                   |
-| GET    | `/api/favorites`       | ✓    | Cidades favoritas                        |
+| GET    | `/api/weather/air-quality`| ✓ | Qualidade do ar (AQI + componentes)      |
+| GET    | `/api/history`         | ✓    | Histórico de consultas                   |
+| GET    | `/api/favorites`       | ✓    | Cidades favoritas com eventos embutidos  |
+| POST   | `/api/favorites`       | ✓    | Adiciona cidade (country opcional, padrão BR) |
+| DELETE | `/api/favorites/{id}`  | ✓    | Remove cidade dos favoritos              |
+
+### Cidades favoritas com eventos (`GET /api/favorites`)
+
+Cada item do array retornado inclui um campo `events` com os próximos eventos cadastrados naquela cidade (consulta em 2 queries totais):
+
+```json
+{
+  "id": 1,
+  "city": "São Paulo",
+  "country": "BR",
+  "events": [
+    {
+      "id": 3,
+      "name": "Festival de Verão",
+      "city": "São Paulo",
+      "event_date": "2026-08-15",
+      "event_time": "18:00:00",
+      "type": "outdoor"
+    }
+  ]
+}
+```
+
+### Auto-favoritar cidade ao criar evento
+
+Ao criar um evento via `POST /api/events`, o backend automaticamente adiciona a cidade aos favoritos (operação idempotente — ignora silenciosamente se já existir).
 
 ### Previsão climática no evento (`event_forecast`)
 
@@ -179,11 +210,25 @@ docker exec -it event-weather-php php artisan key:generate
 docker compose down -v && docker compose up -d --build
 ```
 
+## Cache (Redis)
+
+Todas as chamadas à OpenWeather passam por cache Redis no backend:
+
+| Tipo         | TTL     | Chave                        |
+|--------------|---------|------------------------------|
+| Geocoding    | 24h     | `ew:geo:{cidade}:{país}`     |
+| Clima atual  | 10 min  | `ew:current:{cidade}:{país}` |
+| Previsão 5d  | 30 min  | `ew:forecast:{cidade}:{país}`|
+| Qualidade ar | 30 min  | `ew:air:{cidade}:{país}`     |
+
+Resultado: latência cai de ~4600ms (cold) para ~10ms (warm).
+
 ## Containers
 
 | Container               | Porta | Descrição             |
 |-------------------------|-------|-----------------------|
 | `event-weather-mysql`   | 3306  | MySQL 8.0             |
+| `event-weather-redis`   | —     | Redis 7 (cache)       |
 | `event-weather-php`     | —     | Laravel + php-fpm     |
 | `event-weather-nginx`   | 8080  | Proxy reverso         |
 | `event-weather-frontend`| 5173  | Vue 3 + Vite (HMR)   |

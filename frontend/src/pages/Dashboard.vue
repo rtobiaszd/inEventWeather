@@ -3,7 +3,7 @@
     <!-- Search -->
     <div class="card">
       <div class="search-bar">
-        <div class="search-input-group" style="max-width:320px;">
+        <div class="search-input-group">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
           <input
             v-model="city"
@@ -11,9 +11,6 @@
             placeholder="Cidade (ex: São Paulo)"
             @keyup.enter="searchWeather"
           />
-        </div>
-        <div class="search-input-group" style="max-width:100px;">
-          <input v-model="country" type="text" placeholder="País" maxlength="2" style="padding-left:12px;" />
         </div>
         <button class="btn btn-primary" :disabled="loading" @click="searchWeather">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -29,6 +26,19 @@
     <ErrorMessage v-else-if="error" :message="error" @retry="searchWeather" />
 
     <template v-else-if="weather">
+      <!-- Cidade + botão favoritar -->
+      <div class="dash-city-row">
+        <span class="dash-city-label">{{ searchedCity }}</span>
+        <button
+          class="btn btn-sm"
+          :class="favorited ? 'btn-secondary' : 'btn-ghost'"
+          :disabled="favLoading"
+          @click="toggleFavorite"
+        >
+          {{ favorited ? '♥ Favoritada' : '♡ Favoritar' }}
+        </button>
+      </div>
+
       <!-- Main weather + metrics row -->
       <div class="grid-2">
         <WeatherCard :data="weather" />
@@ -115,8 +125,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { weatherApi, eventsApi } from '../services/api.js'
+import { ref, computed, watch, onMounted } from 'vue'
+import { weatherApi, eventsApi, favoritesApi } from '../services/api.js'
 import WeatherCard   from '../components/WeatherCard.vue'
 import ForecastCard  from '../components/ForecastCard.vue'
 import RiskBadge     from '../components/RiskBadge.vue'
@@ -124,8 +134,8 @@ import EventTable    from '../components/EventTable.vue'
 import LoadingState  from '../components/LoadingState.vue'
 import ErrorMessage  from '../components/ErrorMessage.vue'
 
-const city    = ref('São Paulo')
-const country = ref('BR')
+const city         = ref('São Paulo')
+const searchedCity = ref('São Paulo')
 const weather = ref(null)
 const forecast= ref([])
 const loading = ref(false)
@@ -133,6 +143,17 @@ const forecastLoading = ref(false)
 const error   = ref(null)
 const recentEvents  = ref([])
 const eventsLoading = ref(false)
+
+const favorited  = ref(false)
+const favLoading = ref(false)
+
+// Debounce: busca ao digitar (600ms)
+let debounceTimer = null
+watch(city, (val) => {
+  clearTimeout(debounceTimer)
+  if (!val.trim() || val.trim().length < 2) return
+  debounceTimer = setTimeout(() => searchWeather(), 600)
+})
 
 const aqiLabels = { 1: 'Boa', 2: 'Razoável', 3: 'Moderada', 4: 'Ruim', 5: 'Muito Ruim' }
 const aqiLabel  = computed(() => aqiLabels[weather.value?.aqi] ?? '—')
@@ -150,14 +171,16 @@ function alertIcon(type) {
 
 async function searchWeather() {
   if (!city.value.trim()) return
-  loading.value = true
-  error.value   = null
-  weather.value = null
+  loading.value  = true
+  error.value    = null
+  weather.value  = null
   forecast.value = []
+  favorited.value = false
 
   try {
-    const res = await weatherApi.search(city.value.trim(), country.value.trim() || 'BR')
-    weather.value = res.data
+    const res = await weatherApi.search(city.value.trim(), 'BR')
+    weather.value  = res.data
+    searchedCity.value = city.value.trim()
     loadForecast()
   } catch (e) {
     error.value = e.message
@@ -169,12 +192,25 @@ async function searchWeather() {
 async function loadForecast() {
   forecastLoading.value = true
   try {
-    const res = await weatherApi.forecast(city.value, country.value || 'BR')
+    const res = await weatherApi.forecast(city.value, 'BR')
     forecast.value = res.data.forecast
   } catch {
     // silently ignore
   } finally {
     forecastLoading.value = false
+  }
+}
+
+async function toggleFavorite() {
+  if (favorited.value) return
+  favLoading.value = true
+  try {
+    await favoritesApi.add({ city: searchedCity.value, country: 'BR' })
+    favorited.value = true
+  } catch (e) {
+    if (e.message?.includes('já está')) favorited.value = true
+  } finally {
+    favLoading.value = false
   }
 }
 
@@ -195,3 +231,18 @@ onMounted(() => {
   loadEvents()
 })
 </script>
+
+<style scoped>
+.dash-city-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 4px;
+}
+
+.dash-city-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+</style>
