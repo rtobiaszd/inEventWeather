@@ -191,13 +191,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { eventsApi, favoritesApi, eventTypesApi } from '../services/api.js'
 import WeatherPreview from '../components/WeatherPreview.vue'
 
 import SmartDatePicker from '../components/SmartDatePicker.vue'
 
 const router = useRouter()
+const route = useRoute()
 
 const form = ref({
   name: '', city: '', country: 'BR',
@@ -226,6 +227,13 @@ onMounted(async () => {
       { slug: 'indoor',  name: 'Indoor',  icon: '🏛' },
     ]
   }
+
+  // Pre-fill from query params (ex: from BestDates quick-create)
+  if (route.query.city) form.value.city = route.query.city
+  if (route.query.date) form.value.event_date = route.query.date
+  if (route.query.type) form.value.type = route.query.type
+  if (route.query.time) form.value.event_time = route.query.time
+  if (route.query.name) form.value.name = route.query.name
 })
 
 const submitting = ref(false)

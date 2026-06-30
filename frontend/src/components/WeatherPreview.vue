@@ -42,28 +42,14 @@
       <div v-if="hasEventDate && weather.risk" class="wp-forecast">
         <div class="wp-forecast-header">
           <span class="text-sm font-medium">Previsão para {{ formatDate(eventDate) }}</span>
-          <span v-if="eventForecast" :class="['badge', eventForecast.type === 'forecast' ? 'badge-info' : 'badge-neutral', 'badge-xs']">
-            {{ eventForecast.type === 'forecast' ? 'Dados Reais' : 'Estimativa' }}
-          </span>
         </div>
-        <div v-if="eventForecast" class="wp-forecast-grid">
-          <div class="wp-fc-item">
-            <span class="wp-fc-label">Temperatura</span>
-            <span class="wp-fc-value">{{ eventForecast.temperature }}°C</span>
-          </div>
-          <div class="wp-fc-item">
-            <span class="wp-fc-label">Chuva</span>
-            <span class="wp-fc-value">{{ eventForecast.rain_probability }}%</span>
-          </div>
-          <div class="wp-fc-item">
-            <span class="wp-fc-label">Vento</span>
-            <span class="wp-fc-value">{{ eventForecast.wind_speed }} km/h</span>
-          </div>
-          <div class="wp-fc-item">
-            <span class="wp-fc-label">Condição</span>
-            <span class="wp-fc-value">{{ eventForecast.weather_main }}</span>
-          </div>
-        </div>
+
+        <WeatherTimeline
+          :forecast="weather.forecast ?? []"
+          :event-date="eventDate"
+          :event-time="eventTime"
+        />
+
         <div class="risk-bar mt-8">
           <div class="risk-bar-fill" :style="{ width: weather.risk.score + '%', background: riskColor }" />
         </div>
@@ -80,7 +66,7 @@
       </div>
     </template>
 
-    <div v-else-if="loading && weather" class="weather-preview-loading">
+    <div v-else-if="forecastLoading && weather" class="weather-preview-loading">
       <span class="spinner" style="width:14px;height:14px;border-width:2px;"></span>
       <span class="text-sm text-muted">Analisando data...</span>
     </div>
@@ -95,6 +81,7 @@
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { weatherApi } from '../services/api.js'
 import RiskBadge from './RiskBadge.vue'
+import WeatherTimeline from './WeatherTimeline.vue'
 
 const props = defineProps({
   city:      { type: String, default: '' },
@@ -107,6 +94,7 @@ const props = defineProps({
 const weather = ref(null)
 const eventForecast = ref(null)
 const loading = ref(false)
+const forecastLoading = ref(false)
 const hasError = ref(false)
 
 const aqiLabels = { 1: 'Boa', 2: 'Razoável', 3: 'Moderada', 4: 'Ruim', 5: 'Muito Ruim' }
@@ -157,13 +145,37 @@ async function fetchWeather() {
 
 async function loadEventForecast() {
   if (!props.city || !hasEventDate.value) return
+  forecastLoading.value = true
   try {
-    const res = await weatherApi.search(props.city.trim(), props.country)
-    if (res.data?.risk) {
-      weather.value = { ...weather.value, risk: res.data.risk }
+    const res = await weatherApi.forecast(props.city.trim(), props.country)
+    const list = res.data?.forecast ?? []
+    if (!list.length) return
+
+    const eventTs = new Date(`${props.eventDate}T${props.eventTime || '12:00'}:00`).getTime() / 1000
+
+    let closest = null
+    let minDiff = Infinity
+    for (const entry of list) {
+      const diff = Math.abs((entry.timestamp) - eventTs)
+      if (diff < minDiff) {
+        minDiff = diff
+        closest = entry
+      }
+    }
+
+    if (closest) {
+      eventForecast.value = {
+        type: 'forecast',
+        temperature: closest.temperature ?? 0,
+        rain_probability: closest.rain_probability ?? 0,
+        wind_speed: closest.wind_speed ?? 0,
+        weather_main: closest.weather_main ?? '',
+      }
     }
   } catch {
     // silent
+  } finally {
+    forecastLoading.value = false
   }
 }
 

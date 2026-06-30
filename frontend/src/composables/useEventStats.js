@@ -18,7 +18,9 @@ export function useEventStats(events) {
       ? tickets.reduce((s, e) => s + Number(e.ticket_price), 0) / tickets.length
       : 0
 
-    return { total, planned, confirmed, in_progress, completed, cancelled, outdoor, indoor, revenue, avgTicket }
+    const participants = list.reduce((s, e) => s + (Number(e.registrations_count) || 0), 0)
+
+    return { total, planned, confirmed, in_progress, completed, cancelled, outdoor, indoor, revenue, avgTicket, participants }
   })
 
   const statusBars = computed(() => {

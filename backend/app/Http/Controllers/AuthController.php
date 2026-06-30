@@ -70,6 +70,20 @@ class AuthController extends Controller
         return $this->success($this->userPayload($request->user()));
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'name'     => 'sometimes|string|max:100',
+            'password' => 'sometimes|string|min:6',
+        ]);
+
+        $user->update($data);
+
+        return $this->success($this->userPayload($user->fresh()));
+    }
+
     private function userPayload(User $user): array
     {
         return [

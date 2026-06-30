@@ -9,6 +9,7 @@ const ROLE_DEFAULTS = {
     favorites: { view: true, manage: true },
     history:   { view: true },
     users:     { manage: true },
+    reports:   { view: true, export: true },
   },
   editor: {
     events:    { view: true, create: true, edit: true, delete: false },
@@ -16,6 +17,7 @@ const ROLE_DEFAULTS = {
     favorites: { view: true, manage: true },
     history:   { view: true },
     users:     { manage: false },
+    reports:   { view: true, export: true },
   },
   viewer: {
     events:    { view: true, create: false, edit: false, delete: false },
@@ -23,6 +25,7 @@ const ROLE_DEFAULTS = {
     favorites: { view: true, manage: false },
     history:   { view: true },
     users:     { manage: false },
+    reports:   { view: true, export: true },
   },
 }
 

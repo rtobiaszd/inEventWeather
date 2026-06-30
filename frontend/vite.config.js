@@ -11,4 +11,10 @@ export default defineConfig({
     },
   },
   appType: 'spa',
+  build: {
+    rollupOptions: {
+      external: [],
+    },
+  },
+  assetsInclude: ['**/*.PNG', '**/*.png', '**/*.SVG', '**/*.svg'],
 })

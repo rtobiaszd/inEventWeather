@@ -8,6 +8,12 @@ const routes = [
     meta: { title: 'Login', public: true },
   },
   {
+    path: '/e/:id',
+    name: 'event.public',
+    component: () => import('../pages/EventPublic.vue'),
+    meta: { title: 'Evento', public: true },
+  },
+  {
     path: '/',
     redirect: '/dashboard',
   },
@@ -66,6 +72,24 @@ const routes = [
     meta: { title: 'Agenda', module: 'events' },
   },
   {
+    path: '/events/financial',
+    name: 'events.financial',
+    component: () => import('../pages/FinancialInsights.vue'),
+    meta: { title: 'Inteligência Financeira', module: 'events' },
+  },
+  {
+    path: '/events/:id/registrations',
+    name: 'events.registrations',
+    component: () => import('../pages/EventRegistrations.vue'),
+    meta: { title: 'Inscrições', module: 'events' },
+  },
+  {
+    path: '/reports',
+    name: 'reports',
+    component: () => import('../pages/Reports.vue'),
+    meta: { title: 'Relatórios', module: 'reports' },
+  },
+  {
     path: '/favorites',
     name: 'favorites',
     component: () => import('../pages/Favorites.vue'),
@@ -76,6 +100,12 @@ const routes = [
     name: 'history',
     component: () => import('../pages/History.vue'),
     meta: { title: 'Histórico', module: 'history' },
+  },
+  {
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../pages/Profile.vue'),
+    meta: { title: 'Meu Perfil' },
   },
   // Admin
   {

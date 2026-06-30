@@ -10,6 +10,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           {{ sharing ? 'Copiado!' : 'Compartilhar' }}
         </button>
+        <button v-if="event" class="btn btn-ghost btn-sm" :disabled="duplicating" @click="duplicateEvent">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          {{ duplicating ? 'Duplicando...' : 'Duplicar' }}
+        </button>
         <RouterLink v-if="event" :to="`/events/${event.id}/edit`" class="btn btn-secondary btn-sm">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Editar
@@ -175,6 +179,17 @@
             <p class="text-xs text-muted mt-8" style="font-style:italic">{{ event.event_forecast.note }}</p>
           </div>
 
+          <div v-if="forecastList.length" class="card">
+            <div class="card-header">
+              <h3>⏳ Evolução Horária</h3>
+            </div>
+            <WeatherTimeline
+              :forecast="forecastList"
+              :event-date="event.event_date"
+              :event-time="event.event_time?.slice(0, 5)"
+            />
+          </div>
+
           <!-- Quick actions -->
           <div class="card">
             <div class="card-header"><h3>Ações Rápidas</h3></div>
@@ -182,6 +197,10 @@
               <RouterLink :to="`/events/${event.id}/edit`" class="btn btn-secondary">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Editar Evento
+              </RouterLink>
+              <RouterLink :to="`/events/${event.id}/registrations`" class="btn btn-ghost">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                Inscrições
               </RouterLink>
               <RouterLink :to="`/events/map`" class="btn btn-ghost">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
@@ -191,6 +210,10 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                 {{ sharing ? 'Link Copiado!' : 'Compartilhar Link' }}
               </button>
+              <button class="btn btn-ghost" @click="copyPublicLink">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                Link Público
+              </button>
               <button class="btn btn-danger" @click="confirmDeleteEvent">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                 Excluir
@@ -199,6 +222,15 @@
           </div>
         </div>
       </div>
+
+      <!-- Participants / Inscrições -->
+      <RegistrationManager :event-id="event.id" />
+
+      <!-- Sessions / Programação -->
+      <SessionManager :event-id="event.id" />
+
+      <!-- Production / Tarefas -->
+      <ProductionManager :event-id="event.id" />
     </template>
 
     <!-- Delete modal -->
@@ -218,14 +250,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { eventsApi } from '../services/api.js'
+import { eventsApi, weatherApi } from '../services/api.js'
 import { useAuth } from '../composables/useAuth.js'
 import { useToast } from '../composables/useToast.js'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorMessage from '../components/ErrorMessage.vue'
 import RiskBadge from '../components/RiskBadge.vue'
+import WeatherTimeline from '../components/WeatherTimeline.vue'
+
+const ProductionManager = defineAsyncComponent(() => import('../components/ProductionManager.vue'))
+const RegistrationManager = defineAsyncComponent(() => import('../components/RegistrationManager.vue'))
+import SessionManager from '../components/SessionManager.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -236,8 +273,10 @@ const event = ref(null)
 const loading = ref(true)
 const error = ref(null)
 const sharing = ref(false)
+const duplicating = ref(false)
 const deleting = ref(false)
 const deleteLoading = ref(false)
+const forecastList = ref([])
 
 const riskColor = computed(() => {
   const s = event.value?.risk?.status
@@ -272,6 +311,20 @@ function statusBadgeClass(status) {
   return { planned: 'badge badge-neutral', confirmed: 'badge badge-success', in_progress: 'badge badge-info', completed: 'badge badge-neutral', cancelled: 'badge badge-danger' }[status] || 'badge badge-neutral'
 }
 
+async function duplicateEvent() {
+  if (!event.value) return
+  duplicating.value = true
+  try {
+    const res = await eventsApi.duplicate(event.value.id)
+    showToast(`Evento duplicado com sucesso!`, 'success')
+    router.push({ name: 'events.edit', params: { id: res.data.id } })
+  } catch (e) {
+    showToast(e.message, 'error')
+  } finally {
+    duplicating.value = false
+  }
+}
+
 async function shareEvent() {
   sharing.value = true
   try {
@@ -281,6 +334,17 @@ async function shareEvent() {
     showToast('Erro ao copiar link', 'error')
   } finally {
     setTimeout(() => { sharing.value = false }, 1500)
+  }
+}
+
+async function copyPublicLink() {
+  if (!event.value) return
+  const url = `${window.location.origin}/e/${event.value.id}`
+  try {
+    await navigator.clipboard.writeText(url)
+    showToast('Link público copiado! Compartilhe com seus convidados.', 'success')
+  } catch {
+    showToast('Erro ao copiar link', 'error')
   }
 }
 
@@ -306,6 +370,13 @@ onMounted(async () => {
   try {
     const res = await eventsApi.get(route.params.id)
     event.value = res.data
+
+    if (event.value?.city) {
+      try {
+        const fRes = await weatherApi.forecast(event.value.city, event.value.country)
+        forecastList.value = fRes.data?.forecast ?? []
+      } catch { /* silent */ }
+    }
   } catch (e) {
     error.value = e.message
   } finally {

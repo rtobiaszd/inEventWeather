@@ -52,6 +52,7 @@ export const eventsApi = {
   create: (data)     => http.post('/events', data),
   update: (id, data) => http.put(`/events/${id}`, data),
   remove: (id)       => http.delete(`/events/${id}`),
+  duplicate: (id)    => http.post(`/events/${id}/duplicate`),
   upcomingWeather: () => http.get('/events/upcoming-weather'),
   riskAlerts:         () => http.get('/events/risk-alerts'),
   financialInsights:  () => http.get('/events/financial-insights'),
@@ -76,6 +77,29 @@ export const usersApi = {
   remove:            (id)       => http.delete(`/users/${id}`),
 }
 
+export const sessionsApi = {
+  list:   (eventId)          => http.get(`/events/${eventId}/sessions`),
+  get:    (eventId, id)      => http.get(`/events/${eventId}/sessions/${id}`),
+  create: (eventId, data)    => http.post(`/events/${eventId}/sessions`, data),
+  update: (eventId, id, data)=> http.put(`/events/${eventId}/sessions/${id}`, data),
+  remove: (eventId, id)      => http.delete(`/events/${eventId}/sessions/${id}`),
+}
+
+export const registrationApi = {
+  list:       (eventId)            => http.get(`/events/${eventId}/registrations`),
+  create:     (eventId, data)      => http.post(`/events/${eventId}/registrations`, data),
+  get:        (eventId, id)        => http.get(`/events/${eventId}/registrations/${id}`),
+  update:     (eventId, id, data)  => http.put(`/events/${eventId}/registrations/${id}`, data),
+  checkIn:    (eventId, id)        => http.post(`/events/${eventId}/registrations/${id}/checkin`),
+  undoCheckIn:(eventId, id)        => http.post(`/events/${eventId}/registrations/${id}/checkin/undo`),
+  remove:     (eventId, id)        => http.delete(`/events/${eventId}/registrations/${id}`),
+}
+
+export const publicApi = {
+  event:  (id)       => http.get(`/events/${id}/public`),
+  register: (id, data) => http.post(`/events/${id}/register`, data),
+}
+
 export const eventTypesApi = {
   list:   ()         => http.get('/event-types'),
   create: (data)     => http.post('/event-types', data),
@@ -83,4 +107,19 @@ export const eventTypesApi = {
   remove: (id)       => http.delete(`/event-types/${id}`),
 }
 
+export const tasksApi = {
+  list:          (eventId)             => http.get(`/events/${eventId}/tasks`),
+  create:        (eventId, data)       => http.post(`/events/${eventId}/tasks`, data),
+  update:        (eventId, id, data)   => http.put(`/events/${eventId}/tasks/${id}`, data),
+  updateStatus:  (eventId, id, status) => http.patch(`/events/${eventId}/tasks/${id}/status`, { status }),
+  reorder:       (eventId, tasks)      => http.put(`/events/${eventId}/tasks/reorder`, { tasks }),
+  remove:        (eventId, id)         => http.delete(`/events/${eventId}/tasks/${id}`),
+}
+
+export const authApi = {
+  me:      ()        => http.get('/auth/me'),
+  updateProfile: (data) => http.put('/auth/profile', data),
+}
+
+export { http }
 export default http

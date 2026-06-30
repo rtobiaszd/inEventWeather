@@ -65,7 +65,7 @@
 
     <LoadingState v-if="loading" message="Carregando eventos..." />
     <ErrorMessage v-else-if="error" :message="error" @retry="load" />
-    <EventTable v-else :events="filtered" @edit="goEdit" @delete="confirmDelete" />
+    <EventTable v-else :events="filtered" @edit="goEdit" @duplicate="confirmDuplicate" @delete="confirmDelete" />
 
     <!-- Delete confirmation modal -->
     <div v-if="deleteTarget" class="modal-overlay" @click.self="deleteTarget = null">
@@ -88,12 +88,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { eventsApi, eventTypesApi } from '../services/api.js'
 import { useAuth } from '../composables/useAuth.js'
+import { useToast } from '../composables/useToast.js'
 import EventTable   from '../components/EventTable.vue'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorMessage from '../components/ErrorMessage.vue'
 
 const router    = useRouter()
 const { can }   = useAuth()
+const { show: showToast } = useToast()
 
 const events        = ref([])
 const eventTypes    = ref([])
@@ -105,6 +107,7 @@ const statusFilter  = ref('all')
 
 const deleteTarget = ref(null)
 const deleting     = ref(false)
+const duplicating  = ref(false)
 
 const typeFilters = computed(() => [
   { slug: 'all', name: 'Todos', icon: '📋' },
@@ -182,6 +185,20 @@ async function load() {
 
 function goEdit(event) {
   router.push({ name: 'events.edit', params: { id: event.id } })
+}
+
+async function confirmDuplicate(event) {
+  if (duplicating.value) return
+  duplicating.value = true
+  try {
+    const res = await eventsApi.duplicate(event.id)
+    events.value.unshift(res.data)
+    showToast(`"${event.name}" duplicado com sucesso!`, 'success')
+  } catch (e) {
+    showToast(e.message, 'error')
+  } finally {
+    duplicating.value = false
+  }
 }
 
 function confirmDelete(event) {

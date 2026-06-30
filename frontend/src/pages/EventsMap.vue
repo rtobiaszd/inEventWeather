@@ -32,6 +32,23 @@
           <strong>{{ filteredEvents.length }}</strong> evento{{ filteredEvents.length !== 1 ? 's' : '' }}
         </template>
       </div>
+      <div class="evmap-risk-filter">
+        <button
+          v-for="f in riskFilters"
+          :key="f.value"
+          :class="['btn btn-sm', riskFilter === f.value ? 'btn-primary' : 'btn-ghost']"
+          @click="setRiskFilter(f.value)"
+        >
+          <span class="evmap-risk-dot" :style="{ background: f.color }"></span>
+          {{ f.label }}
+        </button>
+      </div>
+      <div class="evmap-legend">
+        <span class="evmap-legend-dot" style="background:#22C55E"></span> Baixo
+        <span class="evmap-legend-dot" style="background:#F59E0B"></span> Médio
+        <span class="evmap-legend-dot" style="background:#EF4444"></span> Alto
+        <span class="evmap-legend-dot" style="background:#6B7280"></span> N/D
+      </div>
     </div>
     <div ref="mapContainer" class="events-map-container"></div>
 
@@ -45,6 +62,17 @@
         <span v-if="selectedEvent.organizer">👤 {{ selectedEvent.organizer }}</span>
         <span v-if="selectedEvent.expected_audience">👥 {{ formatNum(selectedEvent.expected_audience) }} pessoas</span>
         <span v-if="selectedEvent.budget">💰 Orçamento: {{ formatBRL(selectedEvent.budget) }}</span>
+        <span v-if="getEventRisk(selectedEvent.id)" class="evmap-popup-risk">
+          <span
+            class="evmap-risk-badge"
+            :style="{ background: getEventRisk(selectedEvent.id).color }"
+          >
+            {{ getEventRisk(selectedEvent.id).label }}
+          </span>
+          <template v-if="getEventRisk(selectedEvent.id).reason">
+            {{ getEventRisk(selectedEvent.id).reason }}
+          </template>
+        </span>
       </div>
       <div class="events-map-popup-actions">
         <RouterLink :to="`/events/${selectedEvent.id}`" class="btn btn-sm btn-ghost">Detalhes</RouterLink>
@@ -87,6 +115,12 @@ import { useRoute, useRouter } from 'vue-router'
 import L from 'leaflet'
 import { eventsApi, favoritesApi } from '../services/api.js'
 
+const RISK_LABELS = {
+  HIGH_RISK: { label: 'Risco Alto', color: '#EF4444', weight: 3 },
+  MEDIUM_RISK: { label: 'Risco Médio', color: '#F59E0B', weight: 2 },
+  LOW_RISK: { label: 'Risco Baixo', color: '#22C55E', weight: 1 },
+}
+
 const route = useRoute()
 const router = useRouter()
 
@@ -94,6 +128,14 @@ const mapContainer = ref(null)
 const searchInput = ref(null)
 const events = ref([])
 const selectedEvent = ref(null)
+const riskAlerts = ref([])
+const riskAlertsLoading = ref(false)
+
+const riskFilter = ref('all')
+const riskFilters = [
+  { value: 'all', label: 'Todos', color: '#6B7280' },
+  ...Object.entries(RISK_LABELS).map(([k, v]) => ({ value: k, label: v.label, color: v.color })),
+]
 
 const searchQuery = ref(route.query.city || '')
 const filterCity = ref(route.query.city || '')
@@ -107,11 +149,48 @@ const quickForm = ref({ name: '', city: '', country: 'BR', event_date: '', event
 const quickSubmitting = ref(false)
 const quickError = ref(null)
 
-const filteredEvents = computed(() => {
-  if (!filterCity.value) return events.value
-  const q = filterCity.value.toLowerCase()
-  return events.value.filter(e => e.city?.toLowerCase().includes(q))
+const riskData = computed(() => {
+  const map = {}
+  for (const a of riskAlerts.value) {
+    const eventId = a.event_id
+    if (!eventId) continue
+    const r = RISK_LABELS[a.risk_level] || (a.risk_level === 'HIGH_RISK' ? RISK_LABELS.HIGH_RISK : null)
+    if (r) {
+      map[eventId] = { ...r, reason: alertReason(a) }
+    }
+  }
+  return map
 })
+
+function alertReason(a) {
+  if (a.type === 'weather_threat') return 'Clima adverso esperado'
+  if (a.type === 'budget_overrun') return 'Orçamento excedido'
+  if (a.type === 'logistics') return 'Problema logístico'
+  if (a.type === 'no_data') return 'Sem dados climáticos'
+  return ''
+}
+
+function getEventRisk(eventId) {
+  return riskData.value[eventId] || null
+}
+
+const filteredEvents = computed(() => {
+  let list = events.value
+  const q = filterCity.value.toLowerCase()
+  if (q) list = list.filter(e => e.city?.toLowerCase().includes(q))
+  if (riskFilter.value !== 'all') {
+    list = list.filter(e => {
+      const r = getEventRisk(e.id)
+      return r && r.weight === RISK_LABELS[riskFilter.value].weight
+    })
+  }
+  return list
+})
+
+function setRiskFilter(value) {
+  riskFilter.value = value
+  renderMarkers()
+}
 
 function clearCityFilter() {
   filterCity.value = ''
@@ -123,12 +202,15 @@ function clearCityFilter() {
 let map = null
 let markersLayer = null
 
-function createEventIcon(isSelected = false) {
-  const color = isSelected ? '#3B82F6' : '#6B7280'
+function createEventIcon(isSelected = false, risk = null) {
+  const color = isSelected ? '#3B82F6' : (risk?.color || '#6B7280')
   const size = isSelected ? 28 : 22
+  const shadow = risk
+    ? `0 0 0 3px ${risk.color}44, 0 2px 8px rgba(0,0,0,0.3)`
+    : `0 2px 8px rgba(0,0,0,0.3)`
   return L.divIcon({
     className: 'evmap-marker',
-    html: `<span style="width:${size}px;height:${size}px;background:${color};border:3px solid rgba(255,255,255,0.9);box-shadow:0 2px 8px rgba(0,0,0,0.3)"></span>`,
+    html: `<span style="width:${size}px;height:${size}px;background:${color};border:3px solid rgba(255,255,255,0.9);box-shadow:${shadow}"></span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })
@@ -145,19 +227,22 @@ function renderMarkers() {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue
 
     const isSelected = selectedEvent.value?.id === event.id
-    const marker = L.marker([lat, lng], { icon: createEventIcon(isSelected) })
+    const risk = getEventRisk(event.id)
+    const marker = L.marker([lat, lng], { icon: createEventIcon(isSelected, risk) })
 
     const dateStr = event.event_date ? formatDate(event.event_date) : ''
     const timeStr = event.event_time || ''
     const typeLabel = event.type === 'outdoor' ? '🌤' : '🏛'
     const statusIcons = { planned: '📋', confirmed: '✅', in_progress: '▶️', completed: '🏁', cancelled: '❌' }
     const statusIcon = statusIcons[event.status] || ''
+    const riskBadge = risk ? `<span class="evmap-risk-dot" style="background:${risk.color};display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px"></span>${risk.label}` : ''
     marker.bindTooltip(`
       <div class="evmap-tooltip">
         <strong>${event.name}</strong>
         <span>${dateStr}${timeStr ? ' — ' + timeStr : ''}</span>
         <span class="evmap-tooltip-city">${event.city} ${typeLabel} ${statusIcon}</span>
         ${event.venue ? `<span class="evmap-tooltip-city">📍 ${event.venue}</span>` : ''}
+        ${riskBadge ? `<span class="evmap-tooltip-risk">${riskBadge}</span>` : ''}
       </div>
     `, { direction: 'top', offset: [0, -10] })
 
@@ -191,11 +276,17 @@ function formatBRL(n) {
 
 async function loadEvents() {
   try {
-    const res = await eventsApi.list()
-    events.value = res.data ?? []
+    const [evRes, alertRes] = await Promise.all([
+      eventsApi.list(),
+      eventsApi.riskAlerts().catch(() => ({ data: [] })),
+    ])
+    events.value = evRes.data ?? []
+    riskAlerts.value = alertRes.data ?? []
     renderMarkers()
   } catch {
     // silent
+  } finally {
+    riskAlertsLoading.value = false
   }
 }
 
@@ -537,6 +628,62 @@ onBeforeUnmount(() => {
 
 :global(.evmap-marker span:hover) {
   transform: scale(1.15);
+}
+
+.evmap-risk-filter {
+  display: flex;
+  gap: 4px;
+}
+
+.evmap-risk-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.evmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.evmap-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
+.evmap-popup-risk {
+  margin-top: 4px;
+}
+
+.evmap-risk-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-right: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+:global(.evmap-tooltip-risk) {
+  font-size: 10px;
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  display: block;
 }
 
 :global(.leaflet-tooltip) {

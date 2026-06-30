@@ -59,6 +59,18 @@
             Mapa
           </RouterLink>
         </li>
+        <li v-if="can('events')">
+          <RouterLink to="/events/financial" @click="emit('close')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Financeiro
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/reports" @click="emit('close')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Relatórios
+          </RouterLink>
+        </li>
         <li v-if="can('favorites')">
           <RouterLink to="/favorites" @click="emit('close')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -95,11 +107,13 @@
 
     <div class="sidebar-footer">
       <div v-if="user" class="sidebar-user">
-        <div class="sidebar-user-avatar" :class="`avatar-${user.role || 'viewer'}`">{{ userInitial }}</div>
-        <div class="sidebar-user-info">
-          <span class="sidebar-user-name">{{ user.name || user.username }}</span>
-          <span class="sidebar-user-role">{{ roleLabel }}</span>
-        </div>
+        <RouterLink to="/profile" class="sidebar-user-link" @click="emit('close')">
+          <div class="sidebar-user-avatar" :class="`avatar-${user.role || 'viewer'}`">{{ userInitial }}</div>
+          <div class="sidebar-user-info">
+            <span class="sidebar-user-name">{{ user.name || user.username }}</span>
+            <span class="sidebar-user-role">{{ roleLabel }}</span>
+          </div>
+        </RouterLink>
         <button class="sidebar-logout-btn" title="Sair" @click="handleLogout">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
@@ -161,10 +175,25 @@ async function handleLogout() {
 .sidebar-user {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 0;
   border-radius: var(--radius-md);
   background: rgba(255,255,255,.04);
+}
+
+.sidebar-user-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: background 150ms;
+}
+
+.sidebar-user-link:hover {
+  background: rgba(255,255,255,.08);
 }
 
 .sidebar-user-avatar {

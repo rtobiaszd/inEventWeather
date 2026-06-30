@@ -56,6 +56,10 @@
           <div class="metric-card-label">❌ Cancelados</div>
           <div class="metric-card-value metric-value-danger">{{ animateNum(stats.cancelled) }}</div>
         </div>
+        <div class="metric-card metric-card-primary">
+          <div class="metric-card-label">👥 Participantes</div>
+          <div class="metric-card-value">{{ animateNum(stats.participants) }}</div>
+        </div>
         <RouterLink to="/events" class="metric-card metric-card-cta">
           <div class="metric-card-label">💰 Receita Total</div>
           <div class="metric-card-value metric-value-finance">{{ formatBRL(stats.revenue) }}</div>
@@ -107,12 +111,18 @@
             </svg>
             Inteligência Financeira
           </h3>
-          <button class="btn btn-ghost btn-sm" :disabled="finLoading" @click="loadFinancialInsights">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            Atualizar
-          </button>
+          <div class="flex-gap">
+            <RouterLink to="/events/financial" class="btn btn-ghost btn-sm">
+              Ver detalhes
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </RouterLink>
+            <button class="btn btn-ghost btn-sm" :disabled="finLoading" @click="loadFinancialInsights">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Atualizar
+            </button>
+          </div>
         </div>
         <div class="fin-grid">
           <div class="fin-card fin-card-total">
@@ -187,6 +197,35 @@
               ></div>
             </div>
             <span class="fin-risk-value">{{ riskBudgetPct('HIGH_RISK') }}%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Registration Summary -->
+      <div v-if="regSummary.total > 0" class="card">
+        <div class="card-header">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            </svg>
+            Inscrições
+          </h3>
+        </div>
+        <div class="dash-reg-grid">
+          <div class="dash-reg-item" v-for="(ev, i) in regEvents.slice(0, 4)" :key="ev.id">
+            <div class="dash-reg-info">
+              <RouterLink :to="`/events/${ev.id}/registrations`" class="dash-reg-name">{{ ev.name }}</RouterLink>
+              <span class="dash-reg-meta">{{ ev.city }} • {{ ev._regCount }} inscrição(ões)</span>
+            </div>
+            <RouterLink :to="`/events/${ev.id}/registrations`" class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </RouterLink>
+          </div>
+          <div v-if="regEvents.length > 4" class="dash-reg-more">
+            +{{ regEvents.length - 4 }} evento(s) com inscrições
+          </div>
+          <div v-if="regSummary.total === 0" class="dash-reg-empty">
+            <span class="text-sm text-muted">Nenhuma inscrição ainda. Crie eventos e compartilhe o link público.</span>
           </div>
         </div>
       </div>
@@ -350,7 +389,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { weatherApi, eventsApi, favoritesApi } from '../services/api.js'
+import { weatherApi, eventsApi, favoritesApi, registrationApi } from '../services/api.js'
 import { useAuth } from '../composables/useAuth.js'
 import { useEventStats } from '../composables/useEventStats.js'
 import { useToast } from '../composables/useToast.js'
@@ -366,6 +405,33 @@ import ErrorMessage  from '../components/ErrorMessage.vue'
 
 const { can } = useAuth()
 const { toasts, show: showToast, dismiss } = useToast()
+
+const regSummary = ref({ total: 0, checked_in: 0 })
+const regEvents = ref([])
+
+async function loadRegSummary() {
+  if (!can('events')) return
+  try {
+    const res = await eventsApi.list()
+    const events = res.data ?? []
+    const withRegs = []
+    let totalRegs = 0
+    let totalCheckin = 0
+    for (const ev of events.slice(0, 20)) {
+      try {
+        const regRes = await registrationApi.list(ev.id)
+        const stats = regRes.data?.stats ?? { total: 0, checked_in: 0 }
+        if (stats.total > 0) {
+          withRegs.push({ ...ev, _regCount: stats.total, _checkinCount: stats.checked_in })
+          totalRegs += stats.total
+          totalCheckin += stats.checked_in
+        }
+      } catch { /* no registrations */ }
+    }
+    regSummary.value = { total: totalRegs, checked_in: totalCheckin }
+    regEvents.value = withRegs
+  } catch { /* silent */ }
+}
 const { alerts: riskAlerts, loading: alertsLoading, meta: alertsMeta, hasAlerts, highRiskCount, mediumRiskCount, loadAlerts } = useSmartAlerts()
 const {
   summary: finSummary,
@@ -532,6 +598,7 @@ onMounted(() => {
   loadEvents()
   if (can('events')) loadAlerts()
   if (can('events')) loadFinancialInsights()
+  loadRegSummary()
 })
 
 onBeforeUnmount(() => {
@@ -913,6 +980,64 @@ onBeforeUnmount(() => {
   color: var(--color-text-secondary);
   min-width: 36px;
   text-align: right;
+}
+
+/* Registrations */
+.dash-reg-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-reg-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  transition: border-color 100ms;
+}
+
+.dash-reg-item:hover {
+  border-color: var(--color-primary);
+}
+
+.dash-reg-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-reg-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.dash-reg-name:hover {
+  color: var(--color-primary);
+}
+
+.dash-reg-meta {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.dash-reg-more {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 8px;
+}
+
+.dash-reg-empty {
+  padding: 16px;
+  text-align: center;
 }
 
 @media (max-width: 600px) {

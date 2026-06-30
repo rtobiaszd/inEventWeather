@@ -60,9 +60,10 @@ php artisan migrate --force
 echo "[entrypoint] Executando seeders..."
 php artisan db:seed --force
 
-echo "[entrypoint] Cacheando config, rotas e eventos..."
+echo "[entrypoint] Cacheando config..."
 php artisan config:cache
-php artisan route:cache
-php artisan event:cache
+# Rotas não são cacheadas durante desenvolvimento (evita 404 ao editar api.php)
+# php artisan route:cache
+# php artisan event:cache
 echo "[entrypoint] Iniciando Laravel HTTP server na porta ${PORT:-8080}..."
 exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}

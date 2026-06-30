@@ -17,7 +17,7 @@ class EventController extends Controller
 
     public function index(): JsonResponse
     {
-        $events = Event::orderBy('event_date')->get();
+        $events = Event::withCount('registrations')->orderBy('event_date')->get();
 
         return $this->success($events);
     }
@@ -388,6 +388,30 @@ class EventController extends Controller
                 'medium_risk'    => $mediumRisk,
             ],
         ]);
+    }
+
+    public function duplicate(int $id): JsonResponse
+    {
+        $event = Event::find($id);
+
+        if (!$event) {
+            return $this->error('Evento não encontrado', 404);
+        }
+
+        $copy = $event->replicate();
+        $copy->name = $event->name . ' (Cópia)';
+        $copy->event_date = now()->addWeek()->toDateString();
+        $copy->status = 'planned';
+        $copy->save();
+
+        // Auto-favoritar a cidade
+        try {
+            FavoriteCity::firstOrCreate(
+                ['city' => $event->city, 'country' => strtoupper($event->country)],
+            );
+        } catch (\Throwable) {}
+
+        return $this->success($copy->fresh(), 201);
     }
 
     public function show(int $id): JsonResponse

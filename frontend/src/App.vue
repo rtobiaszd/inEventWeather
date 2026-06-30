@@ -1,6 +1,6 @@
 <template>
   <RouterView v-if="isPublicPage" />
-  <div v-else class="app-layout">
+    <div v-else class="app-layout">
     <Sidebar :is-open="isMobileMenuOpen" @close="closeMobileMenu" />
     <div class="main-wrapper">
       <Header :is-menu-open="isMobileMenuOpen" @toggle-menu="toggleMobileMenu" />
@@ -8,6 +8,7 @@
         <RouterView />
       </main>
     </div>
+    <CommandPalette />
   </div>
 </template>
 
@@ -16,6 +17,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
 import Header from './components/Header.vue'
+import CommandPalette from './components/CommandPalette.vue'
 
 const route = useRoute()
 const isPublicPage = computed(() => !!route.meta.public)

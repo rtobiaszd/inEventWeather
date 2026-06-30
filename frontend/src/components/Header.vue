@@ -25,6 +25,10 @@
       </div>
     </div>
     <div class="header-actions">
+      <button class="cmd-hint" @click="openCmd" title="Abrir busca rápida (Ctrl+K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <kbd>Ctrl+K</kbd>
+      </button>
       <span class="text-sm text-muted">{{ dateStr }}</span>
     </div>
   </header>
@@ -65,4 +69,38 @@ const dateStr = computed(() => {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 })
+
+function openCmd() {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true }))
+}
 </script>
+
+<style scoped>
+.cmd-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  transition: all var(--transition);
+}
+.cmd-hint:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-secondary);
+  box-shadow: var(--shadow-xs);
+}
+.cmd-hint kbd {
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+</style>
