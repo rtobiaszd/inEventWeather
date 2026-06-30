@@ -4,8 +4,8 @@ Sistema para gerenciamento de eventos com análise climática em tempo real. Ao 
 
 (Demo)
 https://inevent-front.onrender.com/
-usuário: admin
-senha:   admin123
+-usuário: admin
+-senha:   admin123
 ## Stack
 
 | Camada    | Tecnologia                          |
