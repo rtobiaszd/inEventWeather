@@ -5,10 +5,16 @@
         <h2>Editar Evento</h2>
         <p>Atualize os dados do evento</p>
       </div>
-      <RouterLink to="/events" class="btn btn-secondary">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Voltar
-      </RouterLink>
+      <div class="flex-gap">
+        <RouterLink v-if="eventId" :to="`/e/${eventId}`" class="btn btn-ghost btn-sm" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Visualizar
+        </RouterLink>
+        <RouterLink to="/events" class="btn btn-secondary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Voltar
+        </RouterLink>
+      </div>
     </div>
 
     <LoadingState v-if="loading" message="Carregando evento..." />
@@ -193,7 +199,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { eventsApi, eventTypesApi } from '../services/api.js'
 import WeatherPreview from '../components/WeatherPreview.vue'
@@ -205,6 +211,8 @@ const eventTypes = ref([])
 
 const route  = useRoute()
 const router = useRouter()
+
+const eventId = computed(() => route.params.id)
 
 const form = ref({
   name: '', city: '', country: 'BR',

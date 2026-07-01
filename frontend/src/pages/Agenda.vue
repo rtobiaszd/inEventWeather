@@ -49,6 +49,7 @@
               { 'agenda-day-other': day.otherMonth, 'agenda-day-today': day.today, 'agenda-day-selected': selectedDate === day.date }
             ]"
             @click="selectDate(day.date)"
+            @dblclick="createEvent(day.date)"
           >
             <span class="agenda-day-num">{{ day.num }}</span>
             <div v-if="day.events.length" class="agenda-day-dots">
@@ -364,6 +365,10 @@ const selectedDateWeather = computed(() => {
 
 function selectDate(date) {
   selectedDate.value = date
+}
+
+function createEvent(date) {
+  router.push(`/events/create?date=${date}`)
 }
 
 function formatSelectedDate(date) {
