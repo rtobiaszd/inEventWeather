@@ -60,6 +60,7 @@ export const eventsApi = {
   upcomingWeather: () => http.get('/events/upcoming-weather'),
   riskAlerts:         () => http.get('/events/risk-alerts'),
   financialInsights:  () => http.get('/events/financial-insights'),
+  importExternal:     () => http.post('/events/import-external'),
 }
 
 export const historyApi = {

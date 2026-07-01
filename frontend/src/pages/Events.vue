@@ -23,6 +23,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
           Mapa
         </RouterLink>
+        <button v-if="can('events', 'create')" class="btn btn-ghost btn-sm" @click="openImport">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Importar Eventos
+        </button>
         <RouterLink v-if="can('events', 'create')" to="/events/create" class="btn btn-primary">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo Evento
@@ -67,6 +71,54 @@
     <ErrorMessage v-else-if="error" :message="error" @retry="load" />
     <EventTable v-else :events="filtered" @edit="goEdit" @duplicate="confirmDuplicate" @delete="confirmDelete" />
 
+    <!-- Import modal -->
+    <div v-if="showImportModal" class="modal-overlay" @click.self="showImportModal = false">
+      <div class="modal-box">
+        <h3>Importar Eventos Externos</h3>
+        <p v-if="!importing && !importResult">
+          Busca eventos nas próximas datas nas plataformas Sympla, Eventim e Eventbrite
+          para as cidades: São Paulo, Rio de Janeiro, Curitiba e Matinhos.
+        </p>
+
+        <div v-if="importing" class="pl-loading" style="padding:24px 0">
+          <span class="spinner" style="width:28px;height:28px;border-width:3px" />
+          <p style="margin-top:10px">Importando eventos...</p>
+        </div>
+
+        <div v-else-if="importResult" class="import-result">
+          <div class="import-result-header">
+            <span class="import-result-icon">✅</span>
+            <span>{{ importResult.total_imported }} evento{{ importResult.total_imported !== 1 ? 's' : '' }} importado{{ importResult.total_imported !== 1 ? 's' : '' }}</span>
+          </div>
+          <table class="import-table" v-if="importResult.results.length">
+            <thead>
+              <tr><th>Plataforma</th><th>Cidade</th><th>Importados</th><th>Erro</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in importResult.results" :key="r.provider + r.city">
+                <td>{{ r.provider }}</td>
+                <td>{{ r.city }}</td>
+                <td>{{ r.imported }}</td>
+                <td><span v-if="r.error" class="text-danger">{{ r.error }}</span><span v-else class="text-success">OK</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex-gap" style="justify-content:flex-end;margin-top:20px">
+          <button class="btn btn-secondary" @click="showImportModal = false">
+            {{ importResult ? 'Fechar' : 'Cancelar' }}
+          </button>
+          <button v-if="!importing && !importResult" class="btn btn-primary" @click="doImport">
+            Importar Agora
+          </button>
+          <button v-if="importResult" class="btn btn-primary" @click="showImportModal = false; load()">
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Delete confirmation modal -->
     <div v-if="deleteTarget" class="modal-overlay" @click.self="deleteTarget = null">
       <div class="modal-box">
@@ -105,9 +157,12 @@ const activeFilter  = ref('all')
 const searchQuery   = ref('')
 const statusFilter  = ref('all')
 
-const deleteTarget = ref(null)
-const deleting     = ref(false)
-const duplicating  = ref(false)
+const deleteTarget  = ref(null)
+const deleting      = ref(false)
+const duplicating   = ref(false)
+const showImportModal = ref(false)
+const importing     = ref(false)
+const importResult  = ref(null)
 
 const typeFilters = computed(() => [
   { slug: 'all', name: 'Todos', icon: '📋' },
@@ -180,6 +235,27 @@ async function load() {
     error.value = e.message
   } finally {
     loading.value = false
+  }
+}
+
+function openImport() {
+  showImportModal.value = true
+  importing.value = false
+  importResult.value = null
+}
+
+async function doImport() {
+  importing.value = true
+  importResult.value = null
+  try {
+    const res = await eventsApi.importExternal()
+    importResult.value = res.data
+    showToast(`${res.data.total_imported} evento(s) importado(s) com sucesso!`, 'success')
+  } catch (e) {
+    showToast(e.message, 'error')
+    showImportModal.value = false
+  } finally {
+    importing.value = false
   }
 }
 
@@ -296,4 +372,12 @@ onMounted(load)
 
 .modal-box h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
 .modal-box p  { font-size: 13.5px; color: var(--color-text-secondary); line-height: 1.6; }
+.import-result { margin-top: 12px; }
+.import-result-header { font-size: 15px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.import-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.import-table th, .import-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--color-border); }
+.import-table th { font-weight: 600; color: var(--color-text-secondary); }
+.text-success { color: var(--color-success); }
+.text-danger  { color: var(--color-danger); }
+.pl-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--color-text-muted); }
 </style>
