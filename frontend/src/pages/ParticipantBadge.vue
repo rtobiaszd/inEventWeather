@@ -54,6 +54,9 @@
             <router-link :to="`/e/${route.params.id}/feedback/${route.params.token}`" class="btn btn-secondary">
               ⭐ Avaliar Evento
             </router-link>
+            <router-link v-if="data.registration.checked_in_at" :to="`/e/${route.params.id}/certificate/${route.params.token}`" class="btn btn-secondary">
+              📜 Meu Certificado
+            </router-link>
           </div>
         </template>
       </div>

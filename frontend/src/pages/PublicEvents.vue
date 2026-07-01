@@ -5,7 +5,10 @@
       <div class="pl-nav-inner">
         <span class="pl-logo">⛅ inEvent</span>
         <div class="pl-nav-links">
-          <router-link to="/login" class="btn btn-primary btn-sm">Entrar</router-link>
+          <template v-if="isLoggedIn">
+            <router-link to="/dashboard" class="btn btn-primary btn-sm">Dashboard</router-link>
+          </template>
+          <router-link v-else to="/login" class="btn btn-primary btn-sm">Entrar</router-link>
         </div>
       </div>
     </nav>
@@ -133,11 +136,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { publicApi } from '../services/api.js'
 
 const router = useRouter()
+
+const isLoggedIn = computed(() => !!localStorage.getItem('ew_token'))
 
 const events = ref([])
 const loading = ref(true)

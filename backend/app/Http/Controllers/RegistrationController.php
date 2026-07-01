@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Certificate;
 use App\Models\Event;
 use App\Models\Registration;
 use App\Services\WeatherService;
@@ -264,6 +265,8 @@ class RegistrationController extends Controller
             'status'        => 'confirmed',
         ]);
 
+        app(CertificateController::class)->generateForRegistration($registration->fresh());
+
         return $this->success([
             'registration' => $registration->fresh(),
             'message'      => 'Check-in realizado com sucesso!',
@@ -282,6 +285,7 @@ class RegistrationController extends Controller
             return $this->error('Esta pessoa ainda não fez check-in.', 409);
         }
 
+        Certificate::where('registration_id', $registration->id)->delete();
         $registration->update(['checked_in_at' => null]);
 
         return $this->success([
@@ -331,6 +335,8 @@ class RegistrationController extends Controller
             'checked_in_at' => now(),
             'status' => 'confirmed',
         ]);
+
+        app(CertificateController::class)->generateForRegistration($registration->fresh());
 
         return $this->success([
             'registration' => $registration->fresh()->only(['id', 'name', 'email', 'company', 'status', 'checked_in_at']),

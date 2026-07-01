@@ -26,6 +26,18 @@ const routes = [
     meta: { title: 'Feedback', public: true },
   },
   {
+    path: '/e/:id/certificate/:token',
+    name: 'event.certificate',
+    component: () => import('../pages/ParticipantCertificate.vue'),
+    meta: { title: 'Certificado', public: true },
+  },
+  {
+    path: '/certificates/verify/:hash',
+    name: 'certificates.verify',
+    component: () => import('../pages/CertificateVerify.vue'),
+    meta: { title: 'Verificar Certificado', public: true },
+  },
+  {
     path: '/',
     name: 'home',
     component: () => import('../pages/PublicEvents.vue'),
@@ -172,10 +184,6 @@ router.beforeEach((to, from, next) => {
   }
 
   if (to.name === 'login' && token) {
-    return next({ name: 'dashboard' })
-  }
-
-  if (to.name === 'home' && token) {
     return next({ name: 'dashboard' })
   }
 

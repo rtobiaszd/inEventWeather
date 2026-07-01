@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\EventTypeController;
 use App\Http\Controllers\FavoriteController;
@@ -30,6 +31,8 @@ Route::get('/events/{eventId}/badge/{token}',    [RegistrationController::class,
 Route::get('/events/{eventId}/feedback/{token}', [App\Http\Controllers\FeedbackController::class, 'showForm'])->middleware('throttle:30,1');
 Route::post('/events/{eventId}/feedback/{token}',[App\Http\Controllers\FeedbackController::class, 'submit'])->middleware('throttle:10,1');
 Route::post('/events/{id}/register',            [RegistrationController::class, 'register'])->middleware('throttle:10,1');
+Route::get('/events/{eventId}/certificate/{token}', [CertificateController::class, 'show'])->middleware('throttle:60,1');
+Route::get('/certificates/verify/{hash}',          [CertificateController::class, 'verify'])->middleware('throttle:60,1');
 
 // Autenticadas (com rate limit global)
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
@@ -76,6 +79,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::post('/checkin-by-token',                      [RegistrationController::class, 'checkInByToken']);
         Route::get('/feedback',                               [App\Http\Controllers\FeedbackController::class, 'index']);
         Route::get('/feedback/results',                       [App\Http\Controllers\FeedbackController::class, 'results']);
+        Route::get('/certificates',                           [CertificateController::class, 'index']);
+        Route::post('/certificates/reissue/{registrationId}', [CertificateController::class, 'reissue']);
         Route::delete('/registrations/{id}',                  [RegistrationController::class, 'destroy']);
     });
 

@@ -121,6 +121,66 @@
           </template>
         </template>
       </div>
+
+      <!-- Certificates Dashboard -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📜 Certificados Emitidos</h3>
+          <button v-if="!certLoaded && !certLoading" class="btn btn-ghost btn-sm" @click="loadCertificates">
+            Carregar
+          </button>
+        </div>
+
+        <LoadingState v-if="certLoading" message="Carregando certificados..." />
+        <ErrorMessage v-else-if="certError" message="Erro ao carregar certificados" @retry="loadCertificates" />
+
+        <template v-else-if="certLoaded">
+          <div class="cert-stats">
+            <div class="cert-stat">
+              <span class="cert-stat-value">{{ certStats.total_registrations }}</span>
+              <span class="cert-stat-label">Inscrições</span>
+            </div>
+            <div class="cert-stat">
+              <span class="cert-stat-value">{{ certStats.checked_in }}</span>
+              <span class="cert-stat-label">Check-ins</span>
+            </div>
+            <div class="cert-stat">
+              <span class="cert-stat-value">{{ certStats.issued }}</span>
+              <span class="cert-stat-label">Certificados</span>
+            </div>
+            <div class="cert-stat">
+              <span class="cert-stat-value">{{ certStats.issuance_rate }}%</span>
+              <span class="cert-stat-label">Taxa de Emissão</span>
+            </div>
+          </div>
+
+          <div v-if="certStats.pending > 0" class="cert-pending-warning">
+            ⚠️ {{ certStats.pending }} participantes já fizeram check-in mas ainda não têm certificado
+            (reemita manualmente se necessário).
+          </div>
+
+          <div v-if="certList.length > 0" class="cert-table">
+            <div class="cert-table-header">
+              <span>Participante</span>
+              <span>Email</span>
+              <span>Emitido em</span>
+              <span></span>
+            </div>
+            <div v-for="c in certList" :key="c.id" class="cert-table-row">
+              <span class="cert-name">{{ c.participant_name }}</span>
+              <span class="text-sm text-muted">{{ c.participant_email }}</span>
+              <span class="text-sm text-muted">{{ formatTime(c.issued_at) }}</span>
+              <a :href="`/certificates/verify/${c.hash}`" target="_blank" class="btn btn-ghost btn-xs">
+                Verificar
+              </a>
+            </div>
+          </div>
+
+          <p v-else class="text-sm text-muted mt-8">
+            Nenhum certificado emitido ainda. Os certificados são gerados automaticamente no check-in.
+          </p>
+        </template>
+      </div>
     </template>
   </div>
 </template>
@@ -128,7 +188,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { eventsApi, feedbackApi } from '../services/api.js'
+import { eventsApi, feedbackApi, certificateApi } from '../services/api.js'
 import { useToast } from '../composables/useToast.js'
 import RegistrationManager from '../components/RegistrationManager.vue'
 import LoadingState from '../components/LoadingState.vue'
@@ -147,6 +207,12 @@ const feedbackLoaded = ref(false)
 const feedbackError = ref(false)
 const feedbackSummary = ref({})
 const feedbackComments = ref([])
+
+const certLoading = ref(false)
+const certLoaded = ref(false)
+const certError = ref(false)
+const certList = ref([])
+const certStats = ref({ total_registrations: 0, checked_in: 0, issued: 0, pending: 0, issuance_rate: 0 })
 
 const publicUrl = computed(() => {
   if (!route.params.id) return ''
@@ -208,6 +274,21 @@ async function loadFeedback() {
   }
 }
 
+async function loadCertificates() {
+  certLoading.value = true
+  certError.value = false
+  try {
+    const res = await certificateApi.list(route.params.id)
+    certList.value = res.data.certificates
+    certStats.value = res.data.stats
+    certLoaded.value = true
+  } catch {
+    certError.value = true
+  } finally {
+    certLoading.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -221,5 +302,76 @@ onMounted(load)
   flex: 1;
   font-size: 13px;
   font-family: monospace;
+}
+
+.cert-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cert-stat {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cert-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cert-stat-label {
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.cert-pending-warning {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.cert-table {
+  font-size: 13px;
+}
+
+.cert-table-header {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 120px 70px;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cert-table-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 120px 70px;
+  gap: 8px;
+  padding: 10px 12px;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cert-table-row:last-child { border-bottom: none; }
+
+.cert-name {
+  font-weight: 600;
+  color: #1e293b;
 }
 </style>

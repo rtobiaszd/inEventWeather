@@ -58,6 +58,11 @@ class Event extends Model
         return $this->hasMany(EventSession::class);
     }
 
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(Certificate::class);
+    }
+
     public function scopeUpcoming(Builder $query): Builder
     {
         return $query->where('event_date', '>=', now()->toDateString())

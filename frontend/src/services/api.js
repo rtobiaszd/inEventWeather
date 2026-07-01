@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+const BASE_URL = import.meta.env.VITE_API_URL || (
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8080/api'
+    : '/api'
+)
 
 const http = axios.create({
   baseURL: BASE_URL,
@@ -126,6 +130,13 @@ export const feedbackApi = {
   submit:      (eventId, token, data) => http.post(`/events/${eventId}/feedback/${token}`, data),
   results:     (eventId)         => http.get(`/events/${eventId}/feedback/results`),
   list:        (eventId)         => http.get(`/events/${eventId}/feedback`),
+}
+
+export const certificateApi = {
+  show:    (eventId, token)   => http.get(`/events/${eventId}/certificate/${token}`),
+  verify:  (hash)             => http.get(`/certificates/verify/${hash}`),
+  list:    (eventId)          => http.get(`/events/${eventId}/certificates`),
+  reissue: (eventId, regId)   => http.post(`/events/${eventId}/certificates/reissue/${regId}`),
 }
 
 export const eventTypesApi = {
