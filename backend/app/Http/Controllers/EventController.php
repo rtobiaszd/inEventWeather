@@ -15,6 +15,26 @@ class EventController extends Controller
         private WeatherService $weatherService,
     ) {}
 
+    public function importExternal(): JsonResponse
+    {
+        try {
+            $scraper = app(\App\Services\EventScraperService::class);
+            $results = $scraper->scrapeAll();
+
+            $total = array_sum(array_column($results, 'imported'));
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'results' => $results,
+                    'total_imported' => $total,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return $this->error('Erro ao importar eventos externos: ' . $e->getMessage(), 500);
+        }
+    }
+
     public function index(): JsonResponse
     {
         $events = Event::withCount('registrations')->orderBy('event_date')->get();

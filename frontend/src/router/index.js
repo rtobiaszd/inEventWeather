@@ -14,8 +14,22 @@ const routes = [
     meta: { title: 'Evento', public: true },
   },
   {
+    path: '/e/:id/badge/:token',
+    name: 'event.badge',
+    component: () => import('../pages/ParticipantBadge.vue'),
+    meta: { title: 'Credencial', public: true },
+  },
+  {
+    path: '/e/:id/feedback/:token',
+    name: 'event.feedback',
+    component: () => import('../pages/EventFeedback.vue'),
+    meta: { title: 'Feedback', public: true },
+  },
+  {
     path: '/',
-    redirect: '/dashboard',
+    name: 'home',
+    component: () => import('../pages/PublicEvents.vue'),
+    meta: { title: 'Eventos', public: true },
   },
   {
     path: '/dashboard',
@@ -84,6 +98,24 @@ const routes = [
     meta: { title: 'Inscrições', module: 'events' },
   },
   {
+    path: '/events/:id/checkin',
+    name: 'events.checkin',
+    component: () => import('../pages/CheckInCenter.vue'),
+    meta: { title: 'Central de Check-in', module: 'events' },
+  },
+  {
+    path: '/speakers',
+    name: 'speakers',
+    component: () => import('../pages/Speakers.vue'),
+    meta: { title: 'Palestrantes', module: 'events' },
+  },
+  {
+    path: '/events/:id/speakers',
+    name: 'events.speakers',
+    component: () => import('../pages/EventSpeakers.vue'),
+    meta: { title: 'Palestrantes', module: 'events' },
+  },
+  {
     path: '/reports',
     name: 'reports',
     component: () => import('../pages/Reports.vue'),
@@ -140,6 +172,10 @@ router.beforeEach((to, from, next) => {
   }
 
   if (to.name === 'login' && token) {
+    return next({ name: 'dashboard' })
+  }
+
+  if (to.name === 'home' && token) {
     return next({ name: 'dashboard' })
   }
 

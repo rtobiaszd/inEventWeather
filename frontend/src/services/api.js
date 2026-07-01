@@ -83,6 +83,21 @@ export const sessionsApi = {
   create: (eventId, data)    => http.post(`/events/${eventId}/sessions`, data),
   update: (eventId, id, data)=> http.put(`/events/${eventId}/sessions/${id}`, data),
   remove: (eventId, id)      => http.delete(`/events/${eventId}/sessions/${id}`),
+  conflicts: (eventId)       => http.get(`/events/${eventId}/sessions/conflicts`),
+  optimize:  (eventId)       => http.get(`/events/${eventId}/sessions/optimize`),
+  applyOptimization: (eventId) => http.post(`/events/${eventId}/sessions/optimize/apply`),
+}
+
+export const speakersApi = {
+  list:   (params)        => http.get('/speakers', { params }),
+  get:    (id)            => http.get(`/speakers/${id}`),
+  create: (data)          => http.post('/speakers', data),
+  update: (id, data)      => http.put(`/speakers/${id}`, data),
+  remove: (id)            => http.delete(`/speakers/${id}`),
+  linkToEvent:   (speakerId, data) => http.post(`/speakers/${speakerId}/link-event`, data),
+  unlinkFromEvent: (speakerId, eventId) => http.delete(`/speakers/${speakerId}/unlink-event/${eventId}`),
+  linkToSession: (speakerId, data) => http.post(`/speakers/${speakerId}/link-session`, data),
+  unlinkFromSession: (speakerId, sessionId) => http.delete(`/speakers/${speakerId}/unlink-session/${sessionId}`),
 }
 
 export const registrationApi = {
@@ -96,8 +111,21 @@ export const registrationApi = {
 }
 
 export const publicApi = {
-  event:  (id)       => http.get(`/events/${id}/public`),
-  register: (id, data) => http.post(`/events/${id}/register`, data),
+  list:     (params)  => http.get('/events/public', { params }),
+  event:    (id)      => http.get(`/events/${id}/public`),
+  register: (id, data)=> http.post(`/events/${id}/register`, data),
+}
+
+export const badgeApi = {
+  get:            (eventId, token) => http.get(`/events/${eventId}/badge/${token}`),
+  checkInByToken: (eventId, token) => http.post(`/events/${eventId}/checkin-by-token`, { token }),
+}
+
+export const feedbackApi = {
+  form:        (eventId, token)  => http.get(`/events/${eventId}/feedback/${token}`),
+  submit:      (eventId, token, data) => http.post(`/events/${eventId}/feedback/${token}`, data),
+  results:     (eventId)         => http.get(`/events/${eventId}/feedback/results`),
+  list:        (eventId)         => http.get(`/events/${eventId}/feedback`),
 }
 
 export const eventTypesApi = {

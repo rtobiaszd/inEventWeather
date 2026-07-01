@@ -15,15 +15,93 @@ class RegistrationController extends Controller
         private WeatherService $weatherService,
     ) {}
 
+    public function publicIndex(Request $request): JsonResponse
+    {
+        $query = Event::withCount('registrations')
+            ->whereNull('provider_id')
+            ->whereIn('status', ['confirmed', 'planned', 'in_progress']);
+
+        if ($search = $request->query('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhere('city', 'like', "%{$search}%")
+                  ->orWhere('organizer', 'like', "%{$search}%");
+            });
+        }
+
+        if ($city = $request->query('city')) {
+            $query->where('city', $city);
+        }
+
+        if ($type = $request->query('type')) {
+            $query->where('type', $type);
+        }
+
+        if ($dateFrom = $request->query('date_from')) {
+            $query->where('event_date', '>=', $dateFrom);
+        }
+
+        if ($dateTo = $request->query('date_to')) {
+            $query->where('event_date', '<=', $dateTo);
+        }
+
+        $order = $request->query('order', 'upcoming');
+        if ($order === 'upcoming') {
+            $query->where('event_date', '>=', now()->subDay()->toDateString())
+                  ->orderBy('event_date');
+        } elseif ($order === 'past') {
+            $query->where('event_date', '<', now()->toDateString())
+                  ->orderBy('event_date', 'desc');
+        } else {
+            $query->orderBy('event_date');
+        }
+
+        $events = $query->paginate($request->query('per_page', 12));
+
+        return response()->json([
+            'success' => true,
+            'data' => $events->items(),
+            'meta' => [
+                'current_page' => $events->currentPage(),
+                'last_page' => $events->lastPage(),
+                'per_page' => $events->perPage(),
+                'total' => $events->total(),
+            ],
+        ]);
+    }
+
     public function publicEvent(int $id): JsonResponse
     {
-        $event = Event::find($id);
+        $event = Event::with('speakers', 'sessions')->find($id);
 
         if (!$event) {
             return $this->error('Evento não encontrado', 404);
         }
 
         $eventData = $event->toArray();
+
+        $eventData['speakers'] = $event->speakers->map(fn ($s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'bio' => $s->bio,
+            'avatar_url' => $s->avatar_url,
+            'company' => $s->company,
+            'role_title' => $s->role_title,
+            'expertise' => $s->expertise,
+            'pivot' => ['is_featured' => $s->pivot->is_featured],
+        ]);
+
+        $eventData['sessions'] = $event->sessions->map(fn ($s) => [
+            'id' => $s->id,
+            'title' => $s->title,
+            'description' => $s->description,
+            'start_time' => $s->start_time,
+            'end_time' => $s->end_time,
+            'room' => $s->room,
+            'speaker_name' => $s->speaker_name,
+            'outdoor_suitable' => $s->outdoor_suitable,
+        ]);
 
         try {
             $weather  = $this->weatherService->getCurrentWeather($event->city, $event->country);
@@ -209,6 +287,54 @@ class RegistrationController extends Controller
         return $this->success([
             'registration' => $registration->fresh(),
             'message'      => 'Check-in desfeito.',
+        ]);
+    }
+
+    public function badge(int $eventId, string $token): JsonResponse
+    {
+        $registration = Registration::where('event_id', $eventId)
+            ->where('checkin_token', $token)
+            ->first();
+
+        if (!$registration) {
+            return $this->error('Credencial não encontrada', 404);
+        }
+
+        $event = $registration->event;
+
+        return $this->success([
+            'registration' => $registration->only(['id', 'name', 'email', 'company', 'status', 'checked_in_at']),
+            'event' => $event->only(['id', 'name', 'city', 'venue', 'event_date', 'event_time', 'type', 'organizer']),
+        ]);
+    }
+
+    public function checkInByToken(Request $request, int $eventId): JsonResponse
+    {
+        $data = $request->validate([
+            'token' => 'required|string|size:32',
+        ]);
+
+        $registration = Registration::where('event_id', $eventId)
+            ->where('checkin_token', $data['token'])
+            ->first();
+
+        if (!$registration) {
+            return $this->error('Credencial não encontrada', 404);
+        }
+
+        if ($registration->checked_in_at) {
+            $formatted = $registration->checked_in_at->format('d/m/Y H:i');
+            return $this->error("Check-in já realizado em {$formatted}.", 409);
+        }
+
+        $registration->update([
+            'checked_in_at' => now(),
+            'status' => 'confirmed',
+        ]);
+
+        return $this->success([
+            'registration' => $registration->fresh()->only(['id', 'name', 'email', 'company', 'status', 'checked_in_at']),
+            'message' => 'Check-in realizado com sucesso!',
         ]);
     }
 

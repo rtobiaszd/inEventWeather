@@ -8,6 +8,7 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SessionController;
+use App\Http\Controllers\SpeakerController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeatherController;
@@ -22,9 +23,13 @@ Route::get('/health', fn () => response()->json([
 Route::post('/auth/login',    [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,60');
 
-// Públicas — página do evento e inscrição (sem auth)
-Route::get('/events/{id}/public',   [RegistrationController::class, 'publicEvent'])->middleware('throttle:60,1');
-Route::post('/events/{id}/register', [RegistrationController::class, 'register'])->middleware('throttle:10,1');
+// Públicas — listagem, página do evento e inscrição (sem auth)
+Route::get('/events/public',           [RegistrationController::class, 'publicIndex'])->middleware('throttle:30,1');
+Route::get('/events/{id}/public',              [RegistrationController::class, 'publicEvent'])->middleware('throttle:60,1');
+Route::get('/events/{eventId}/badge/{token}',    [RegistrationController::class, 'badge'])->middleware('throttle:60,1');
+Route::get('/events/{eventId}/feedback/{token}', [App\Http\Controllers\FeedbackController::class, 'showForm'])->middleware('throttle:30,1');
+Route::post('/events/{eventId}/feedback/{token}',[App\Http\Controllers\FeedbackController::class, 'submit'])->middleware('throttle:10,1');
+Route::post('/events/{id}/register',            [RegistrationController::class, 'register'])->middleware('throttle:10,1');
 
 // Autenticadas (com rate limit global)
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
@@ -39,6 +44,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/events/upcoming-weather', [EventController::class, 'upcomingWeather']);
     Route::get('/events/risk-alerts', [EventController::class, 'riskAlerts']);
     Route::get('/events/financial-insights', [EventController::class, 'financialInsights']);
+    Route::post('/events/import-external', [EventController::class, 'importExternal']);
     Route::post('/events/{id}/duplicate', [EventController::class, 'duplicate']);
     Route::apiResource('events', EventController::class);
 
@@ -53,6 +59,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     });
 
     Route::prefix('events/{eventId}')->group(function () {
+        Route::get('sessions/conflicts', [SessionController::class, 'conflicts']);
+        Route::get('sessions/optimize', [SessionController::class, 'optimize']);
+        Route::post('sessions/optimize/apply', [SessionController::class, 'applyOptimization']);
         Route::apiResource('sessions', SessionController::class);
         Route::apiResource('tasks', TaskController::class)->except(['show']);
         Route::patch('tasks/{id}/status', [TaskController::class, 'updateStatus']);
@@ -64,6 +73,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::put('/registrations/{id}',                     [RegistrationController::class, 'update']);
         Route::post('/registrations/{id}/checkin',            [RegistrationController::class, 'checkIn']);
         Route::post('/registrations/{id}/checkin/undo',       [RegistrationController::class, 'undoCheckIn']);
+        Route::post('/checkin-by-token',                      [RegistrationController::class, 'checkInByToken']);
+        Route::get('/feedback',                               [App\Http\Controllers\FeedbackController::class, 'index']);
+        Route::get('/feedback/results',                       [App\Http\Controllers\FeedbackController::class, 'results']);
         Route::delete('/registrations/{id}',                  [RegistrationController::class, 'destroy']);
     });
 
@@ -74,6 +86,14 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/favorites',         [FavoriteController::class, 'index']);
     Route::post('/favorites',        [FavoriteController::class, 'store']);
     Route::delete('/favorites/{id}', [FavoriteController::class, 'destroy']);
+
+    // Palestrantes
+    Route::get('/speakers/search/{query}', [SpeakerController::class, 'index']);
+    Route::post('/speakers/{id}/link-event', [SpeakerController::class, 'linkToEvent']);
+    Route::apiResource('speakers', SpeakerController::class);
+    Route::delete('/speakers/{speakerId}/unlink-event/{eventId}', [SpeakerController::class, 'unlinkFromEvent']);
+    Route::post('/speakers/{id}/link-session', [SpeakerController::class, 'linkToSession']);
+    Route::delete('/speakers/{speakerId}/unlink-session/{sessionId}', [SpeakerController::class, 'unlinkFromSession']);
 
     // Tipos de evento — leitura para todos, escrita só para admin
     Route::get('/event-types', [EventTypeController::class, 'index']);

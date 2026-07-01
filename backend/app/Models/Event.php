@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Event extends Model
@@ -17,6 +18,7 @@ class Event extends Model
         'status', 'budget', 'revenue', 'ticket_price',
         'organizer', 'organizer_contact', 'venue',
         'end_date', 'end_time', 'banner_url', 'tags', 'notes',
+        'provider', 'provider_id', 'created_by',
     ];
 
     protected function casts(): array
@@ -41,6 +43,19 @@ class Event extends Model
     public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class);
+    }
+
+    public function speakers(): BelongsToMany
+    {
+        return $this->belongsToMany(Speaker::class, 'event_speaker')
+            ->withPivot('is_featured', 'sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order');
+    }
+
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(EventSession::class);
     }
 
     public function scopeUpcoming(Builder $query): Builder

@@ -87,6 +87,13 @@
               </td>
               <td class="rm-actions">
                 <button
+                  class="btn btn-ghost btn-xs"
+                  @click="showBadge(r)"
+                  title="Ver credencial"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M12 13c-2.67 0-8 1.34-8 4v1h16v-1c0-2.66-5.33-4-8-4z"/></svg>
+                </button>
+                <button
                   v-if="!r.checked_in_at"
                   class="btn btn-ghost btn-xs"
                   :disabled="checkingId === r.id"
@@ -114,6 +121,19 @@
       </div>
     </template>
 
+    <!-- Badge Modal -->
+    <div v-if="badgeTarget" class="modal-overlay" @click.self="badgeTarget = null">
+      <div class="modal-box" style="max-width:380px;text-align:center">
+        <h3 style="margin-bottom:4px">{{ badgeTarget.name }}</h3>
+        <p v-if="badgeTarget.company" class="text-sm text-muted" style="margin-bottom:16px">{{ badgeTarget.company }}</p>
+        <canvas ref="badgeQrCanvas" style="margin:0 auto 16px"></canvas>
+        <a :href="badgeLink" target="_blank" class="btn btn-primary btn-sm" style="width:100%">
+          📱 Abrir Credencial
+        </a>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px;width:100%" @click="badgeTarget = null">Fechar</button>
+      </div>
+    </div>
+
     <div v-if="deleteTarget" class="modal-overlay" @click.self="deleteTarget = null">
       <div class="modal-box">
         <h3>Remover participante?</h3>
@@ -130,9 +150,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { registrationApi } from '../services/api.js'
 import { useToast } from '../composables/useToast.js'
+import QRCode from 'qrcode'
 import LoadingState from './LoadingState.vue'
 import ErrorMessage from './ErrorMessage.vue'
 
@@ -152,6 +173,13 @@ const formError = ref(null)
 const checkingId = ref(null)
 const deleteTarget = ref(null)
 const deleting = ref(false)
+const badgeTarget = ref(null)
+const badgeQrCanvas = ref(null)
+
+const badgeLink = computed(() => {
+  if (!badgeTarget.value) return '#'
+  return `${window.location.origin}/e/${props.eventId}/badge/${badgeTarget.value.checkin_token}`
+})
 
 const stats = computed(() => {
   const total = registrations.value.length
@@ -267,6 +295,22 @@ async function doRemove() {
     showToast(e.message, 'error')
   } finally {
     deleting.value = false
+  }
+}
+
+async function showBadge(r) {
+  badgeTarget.value = r
+  await nextTick()
+  if (!badgeQrCanvas.value) return
+  try {
+    const url = `${window.location.origin}/e/${props.eventId}/badge/${r.checkin_token}`
+    await QRCode.toCanvas(badgeQrCanvas.value, url, {
+      width: 180,
+      margin: 2,
+      color: { dark: '#0f172a', light: '#ffffff' },
+    })
+  } catch {
+    // Silent
   }
 }
 

@@ -78,6 +78,47 @@
             </div>
           </div>
 
+          <!-- Speakers -->
+          <div v-if="event.speakers?.length" class="ep-speakers-card">
+            <h3>🎤 Palestrantes</h3>
+            <div class="ep-speakers-grid">
+              <div
+                v-for="speaker in event.speakers"
+                :key="speaker.id"
+                class="ep-speaker-item"
+                :class="{ 'ep-speaker-featured': speaker.pivot?.is_featured }"
+              >
+                <div class="ep-speaker-avatar">
+                  <img v-if="speaker.avatar_url" :src="speaker.avatar_url" :alt="speaker.name" />
+                  <span v-else class="ep-speaker-initials">{{ speaker.name.charAt(0) }}</span>
+                </div>
+                <div class="ep-speaker-info">
+                  <strong>{{ speaker.name }}</strong>
+                  <span v-if="speaker.company || speaker.role_title">
+                    {{ [speaker.role_title, speaker.company].filter(Boolean).join(' — ') }}
+                  </span>
+                  <span v-if="speaker.expertise" class="ep-speaker-expertise">{{ speaker.expertise }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sessions -->
+          <div v-if="event.sessions?.length" class="ep-sessions-card">
+            <h3>📋 Programação</h3>
+            <div class="ep-sessions-list">
+              <div v-for="session in event.sessions" :key="session.id" class="ep-session-item">
+                <div class="ep-session-time">{{ session.start_time?.slice(0, 5) }}{{ session.end_time ? ' — ' + session.end_time.slice(0, 5) : '' }}</div>
+                <div class="ep-session-info">
+                  <strong>{{ session.title }}</strong>
+                  <span v-if="session.speaker_name" class="ep-session-speaker">{{ session.speaker_name }}</span>
+                  <span v-if="session.room" class="ep-session-room">{{ session.room }}</span>
+                  <span v-if="session.outdoor_suitable" class="badge badge-info" style="font-size:11px">🌤 Área externa</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Registration form -->
           <div class="ep-register-card">
             <h3>📝 Inscreva-se</h3>
@@ -495,6 +536,143 @@ onMounted(async () => {
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 13px;
+}
+
+.ep-speakers-card {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+
+.ep-speakers-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0 0 12px;
+}
+
+.ep-speakers-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ep-speaker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.04);
+  border-radius: 12px;
+}
+
+.ep-speaker-featured {
+  background: rgba(59,130,246,.1);
+  border: 1px solid rgba(59,130,246,.2);
+}
+
+.ep-speaker-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255,255,255,.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ep-speaker-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ep-speaker-initials {
+  font-size: 14px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.ep-speaker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ep-speaker-info strong {
+  font-size: 14px;
+  color: #f1f5f9;
+}
+
+.ep-speaker-info > span {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.ep-speaker-expertise {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.ep-sessions-card {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+
+.ep-sessions-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0 0 12px;
+}
+
+.ep-sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ep-session-item {
+  display: flex;
+  gap: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.04);
+  border-radius: 12px;
+}
+
+.ep-session-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3b82f6;
+  white-space: nowrap;
+  padding-top: 1px;
+  min-width: 90px;
+}
+
+.ep-session-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ep-session-info strong {
+  font-size: 14px;
+  color: #f1f5f9;
+}
+
+.ep-session-speaker,
+.ep-session-room {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 @media (max-width: 600px) {

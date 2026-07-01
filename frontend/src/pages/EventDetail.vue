@@ -223,6 +223,16 @@
         </div>
       </div>
 
+      <!-- Palestrantes -->
+      <div class="card">
+        <div class="card-header">
+          <h3>🎤 Palestrantes</h3>
+          <RouterLink :to="`/events/${event.id}/speakers`" class="btn btn-ghost btn-sm">
+            Gerenciar Palestrantes
+          </RouterLink>
+        </div>
+      </div>
+
       <!-- Participants / Inscrições -->
       <RegistrationManager :event-id="event.id" />
 

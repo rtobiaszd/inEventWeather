@@ -54,16 +54,47 @@
         </div>
         <div class="form-row">
           <div class="form-group" style="flex:1">
-            <label>Palestrante</label>
-            <input v-model="form.speaker_name" type="text" class="form-control" placeholder="Nome do palestrante" />
-          </div>
-          <div class="form-group" style="flex:1">
             <label>Sala / Local</label>
             <input v-model="form.room" type="text" class="form-control" placeholder="Ex: Auditório A" />
           </div>
           <div class="form-group" style="flex:1">
             <label>Capacidade</label>
             <input v-model="form.capacity" type="number" class="form-control" placeholder="0" min="0" />
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Outdoor</label>
+            <select v-model="form.outdoor_suitable" class="form-control">
+              <option :value="true">Sim</option>
+              <option :value="false">Não</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Palestrantes</label>
+          <div v-if="form.speaker_ids.length" class="selected-speakers">
+            <span v-for="sid in form.speaker_ids" :key="sid" class="selected-speaker-tag">
+              {{ getSpeakerName(sid) }}
+              <button type="button" class="tag-remove" @click="removeSpeakerFromSession(sid)">×</button>
+            </span>
+          </div>
+          <div class="speaker-add-row">
+            <input v-model="speakerSearchQuery" type="text" class="form-control" placeholder="Buscar palestrante..." @input="searchSpeakers(speakerSearchQuery)" @focus="showSpeakerSearch = true" />
+            <button v-if="showSpeakerSearch && speakerSearchResults.length" type="button" class="btn btn-ghost btn-xs" @click="showSpeakerSearch = false">Fechar</button>
+          </div>
+          <div v-if="showSpeakerSearch && speakerSearchResults.length" class="speaker-search-results">
+            <div
+              v-for="s in speakerSearchResults"
+              :key="s.id"
+              class="speaker-search-item"
+              @click="addSpeakerToSession(s)"
+            >
+              <strong>{{ s.name }}</strong>
+              <span v-if="s.company"> — {{ s.company }}</span>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:8px">
+            <label>Ou use nome avulso (sem cadastro)</label>
+            <input v-model="form.speaker_name" type="text" class="form-control" placeholder="Nome do palestrante" />
           </div>
         </div>
         <div class="form-group">
@@ -102,7 +133,11 @@
                 <span v-if="session.status === 'cancelled'" class="badge badge-xs badge-danger">Cancelada</span>
               </div>
               <div class="session-meta">
-                <span v-if="session.speaker_name">
+                <span v-if="session.speakers?.length">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  {{ session.speakers.map(s => s.name).join(', ') }}
+                </span>
+                <span v-else-if="session.speaker_name">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   {{ session.speaker_name }}
                 </span>
@@ -114,6 +149,8 @@
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                   {{ session.capacity }}
                 </span>
+                <span v-if="session.outdoor_suitable === false" class="badge badge-xs badge-neutral">Indoor</span>
+                <span v-if="session.weather_optimized_at" class="badge badge-xs badge-info">Otimizado</span>
               </div>
               <p v-if="session.description" class="session-desc">{{ session.description }}</p>
             </div>
@@ -148,7 +185,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { sessionsApi } from '../services/api.js'
+import { sessionsApi, speakersApi } from '../services/api.js'
 import { useToast } from '../composables/useToast.js'
 import LoadingState from './LoadingState.vue'
 import ErrorMessage from './ErrorMessage.vue'
@@ -162,6 +199,10 @@ const { show: showToast } = useToast()
 const sessions = ref([])
 const loading = ref(true)
 const loadError = ref(null)
+const availableSpeakers = ref([])
+const showSpeakerSearch = ref(false)
+const speakerSearchQuery = ref('')
+const speakerSearchResults = ref([])
 
 const showForm = ref(false)
 const editingId = ref(null)
@@ -185,7 +226,35 @@ function emptyForm() {
     type: 'talk',
     capacity: null,
     status: 'scheduled',
+    speaker_ids: [],
+    outdoor_suitable: true,
   }
+}
+
+async function searchSpeakers(query) {
+  if (!query.trim()) {
+    speakerSearchResults.value = []
+    return
+  }
+  try {
+    const res = await speakersApi.list({ search: query })
+    speakerSearchResults.value = res.data ?? []
+  } catch {
+    speakerSearchResults.value = []
+  }
+}
+
+function addSpeakerToSession(speaker) {
+  if (!form.value.speaker_ids.find(id => id === speaker.id)) {
+    form.value.speaker_ids.push(speaker.id)
+  }
+  showSpeakerSearch.value = false
+  speakerSearchQuery.value = ''
+  speakerSearchResults.value = []
+}
+
+function removeSpeakerFromSession(speakerId) {
+  form.value.speaker_ids = form.value.speaker_ids.filter(id => id !== speakerId)
 }
 
 const groupedSessions = computed(() => {
@@ -244,16 +313,31 @@ function cancelForm() {
   formError.value = null
 }
 
+function getSpeakerName(id) {
+  const found = availableSpeakers.value.find(s => s.id === id)
+  return found?.name || 'Carregando...'
+}
+
+async function loadSpeakers() {
+  try {
+    const res = await speakersApi.list({ event_id: props.eventId })
+    availableSpeakers.value = res.data ?? []
+  } catch {
+    availableSpeakers.value = []
+  }
+}
+
 async function save() {
   if (!form.value.name || !form.value.date || !form.value.start_time || !form.value.end_time) return
   saving.value = true
   formError.value = null
   try {
+    const payload = { ...form.value }
     if (editingId.value) {
-      await sessionsApi.update(props.eventId, editingId.value, form.value)
+      await sessionsApi.update(props.eventId, editingId.value, payload)
       showToast('Sessão atualizada', 'success')
     } else {
-      await sessionsApi.create(props.eventId, form.value)
+      await sessionsApi.create(props.eventId, payload)
       showToast('Sessão criada', 'success')
     }
     cancelForm()
@@ -288,8 +372,12 @@ async function load() {
   loading.value = true
   loadError.value = null
   try {
-    const res = await sessionsApi.list(props.eventId)
-    sessions.value = res.data ?? []
+    const [sessionsRes, speakersRes] = await Promise.all([
+      sessionsApi.list(props.eventId),
+      speakersApi.list({ event_id: props.eventId }),
+    ])
+    sessions.value = sessionsRes.data ?? []
+    availableSpeakers.value = speakersRes.data ?? []
   } catch (e) {
     loadError.value = e.message
   } finally {
@@ -470,6 +558,64 @@ onMounted(load)
 
 .modal-box h3 { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
 .modal-box p  { font-size: 13.5px; color: var(--color-text-secondary); line-height: 1.6; }
+
+.selected-speakers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.selected-speaker-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+}
+
+.tag-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.tag-remove:hover {
+  color: #EF4444;
+}
+
+.speaker-add-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.speaker-search-results {
+  margin-top: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.speaker-search-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.speaker-search-item:hover {
+  background: var(--color-bg);
+}
 
 @media (max-width: 600px) {
   .form-row {
